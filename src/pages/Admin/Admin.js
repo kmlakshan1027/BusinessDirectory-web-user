@@ -32,25 +32,7 @@ const Admin = () => {
     fetchStats();
   }, []);
 
-  // Auto-refresh when navigating back from other admin pages
-  useEffect(() => {
-    if (location.state?.refresh) {
-      console.log('Refreshing admin dashboard due to navigation state');
-      fetchStats();
-      // Clear the state to prevent unnecessary refreshes
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
-
-  // Auto-refresh every 30 seconds to keep data current
-  useEffect(() => {
-    const interval = setInterval(() => {
-      console.log('Auto-refreshing admin statistics...');
-      fetchStats();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
+  
 
   const fetchStats = async () => {
     try {
@@ -1088,15 +1070,7 @@ const Admin = () => {
               </button>
             </div>
             
-            <p style={{
-              color: themeColors.primary,
-              fontSize: '0.9rem',
-              margin: '1.5rem 0 0 0',
-              opacity: 0.7,
-              fontStyle: 'italic'
-            }}>
-              Dashboard automatically refreshes every 30 seconds to keep data current
-            </p>
+            
           </div>
         </div>
       </main>
