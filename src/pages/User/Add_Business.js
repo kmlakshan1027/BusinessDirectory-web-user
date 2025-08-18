@@ -787,7 +787,7 @@ const AddBusiness = () => {
       const imageCount = imageUrls.length;
       showAlert(
         'success', 
-        '🎉 Business Submitted Successfully!', 
+        'Business Submitted Successfully!', 
         `Your business "${formData.name}" has been submitted for review and will be published soon. ${imageCount} image${imageCount > 1 ? 's' : ''} uploaded successfully.`,
         6000
       );
