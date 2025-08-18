@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../configs/FirebaseConfigs.js';
 import { colors } from '../../utils/colors.js';
-import ImageUpload from '../../components/ImageUpload.js';
 
 const Update_Business = () => {
   const navigate = useNavigate();
@@ -26,7 +25,6 @@ const Update_Business = () => {
     newLocation: '',
     customLocation: '',
     newDistrict: '',
-    businessImages: [],
     alwaysOpen: false,
     operatingHours: {
       sunday: { isOpen: false, openTime: '', closeTime: '' },
@@ -67,7 +65,6 @@ const Update_Business = () => {
     'Website',
     'Location URL',
     'Operating Hours',
-    'Business Images',
     'Other'
   ];
 
@@ -243,21 +240,7 @@ const Update_Business = () => {
     }
   };
 
-  // Handle image updates from ImageUpload component
-  const handleImagesChange = (newImages) => {
-    setFormData(prev => ({
-      ...prev,
-      businessImages: newImages
-    }));
-
-    // Clear image validation error
-    if (errors.businessImages) {
-      setErrors(prev => ({
-        ...prev,
-        businessImages: undefined
-      }));
-    }
-  };
+  
 
   // Operating hours handlers
   const handleAlwaysOpenToggle = () => {
@@ -489,11 +472,7 @@ const Update_Business = () => {
           }
           break;
 
-        case 'Business Images':
-          if (formData.businessImages.length === 0) {
-            newErrors.businessImages = 'Please upload at least one business image';
-          }
-          break;
+        
       }
     }
     
@@ -569,16 +548,7 @@ const Update_Business = () => {
             operatingTimes: formData.alwaysOpen ? null : formData.operatingHours
           });
           break;
-        case 'Business Images':
-          newValue = JSON.stringify(formData.businessImages.map(img => ({
-            url: img.url,
-            publicId: img.publicId,
-            name: img.name,
-            width: img.width,
-            height: img.height,
-            format: img.format
-          })));
-          break;
+        
         default:
           newValue = 'See description for details';
       }
@@ -616,7 +586,6 @@ const Update_Business = () => {
         newLocation: '',
         customLocation: '',
         newDistrict: '',
-        businessImages: [],
         alwaysOpen: false,
         operatingHours: {
           sunday: { isOpen: false, openTime: '', closeTime: '' },
@@ -663,7 +632,7 @@ const Update_Business = () => {
         alwaysOpen: businessData.alwaysOpen || false,
         operatingTimes: businessData.operatingTimes || null
       });
-      case 'Business Images': return JSON.stringify(businessData.businessImages || []);
+      
       default: return 'N/A';
     }
   };
@@ -1453,35 +1422,7 @@ const Update_Business = () => {
           </div>
         );
 
-      case 'Business Images':
-        return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New Business Images <span style={{ color: 'red' }}>*</span>
-            </label>
-            <ImageUpload
-              onImagesChange={handleImagesChange}
-              currentImages={formData.businessImages}
-              maxImages={5}
-              disabled={isSubmitting}
-            />
-            {errors.businessImages && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.5rem'
-              }}>
-                {errors.businessImages}
-              </div>
-            )}
-          </div>
-        );
+      
 
       default:
         return null;
@@ -1517,51 +1458,11 @@ const Update_Business = () => {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: business.imageUrl ? 'auto 1fr' : '1fr',
+        gridTemplateColumns: '1fr',
         gap: '1.5rem',
         marginBottom: '1rem'
       }}>
-        {/* Business Image Section */}
-        {business.imageUrl && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start'
-          }}>
-            <img
-              src={business.imageUrl}
-              alt={business.name || 'Business Image'}
-              style={{
-                width: '150px',
-                height: '110px',
-                objectFit: 'cover',
-                borderRadius: '8px',
-                border: '2px solid #e0e0e0',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
-            />
-            <div style={{
-              display: 'none',
-              backgroundColor: '#f8f9fa',
-              border: '2px dashed #dee2e6',
-              borderRadius: '8px',
-              padding: '1rem',
-              color: colors.mediumGray,
-              fontSize: '0.8rem',
-              width: '120px',
-              height: '90px',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column'
-            }}>
-              <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>📷</div>
-              <div>No Image</div>
-            </div>
-          </div>
-        )}
+        
 
         {/* Main Content Grid */}
         <div style={{
