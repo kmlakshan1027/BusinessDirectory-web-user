@@ -87,8 +87,6 @@ class BusinessRequestService {
         throw new Error('Firebase service is temporarily unavailable. Please try again later.');
       } else if (error.code === 'failed-precondition') {
         throw new Error('Firebase configuration error. Please contact support.');
-      } else if (error.message.includes('image')) {
-        throw new Error(`Image upload error: ${error.message}`);
       } else {
         throw new Error(`Failed to submit business request: ${error.message}`);
       }
