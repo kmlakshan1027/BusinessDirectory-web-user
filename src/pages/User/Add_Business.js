@@ -3,36 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../../configs/FirebaseConfigs.js';
 import { colors } from '../../utils/colors.js';
-import ImageUpload from '../../components/ImageUpload.js';
+
 import BusinessRequestService from '../../services/BusinessRequestService.js';
 
 // Sri Lankan districts list
 const DISTRICTS = [
-  'Colombo',
-  'Gampaha', 
-  'Kalutara',
-  'Kandy',
-  'Matale',
-  'Nuwara Eliya',
-  'Galle',
-  'Matara',
-  'Hambantota',
-  'Jaffna',
-  'Kilinochchi',
-  'Mannar',
-  'Vavuniya',
-  'Mullaitivu',
-  'Trincomalee',
-  'Batticaloa',
-  'Ampara',
-  'Kurunegala',
-  'Puttalam',
-  'Anuradhapura',
-  'Polonnaruwa',
-  'Badulla',
-  'Monaragala',
-  'Ratnapura',
-  'Kegalle'
+  'Colombo','Gampaha','Kalutara','Kandy','Matale','Nuwara Eliya','Galle','Matara','Hambantota','Jaffna','Kilinochchi','Mannar',
+  'Vavuniya','Mullaitivu','Trincomalee','Batticaloa','Ampara','Kurunegala','Puttalam','Anuradhapura','Polonnaruwa','Badulla',
+  'Monaragala','Ratnapura','Kegalle'
 ];
 
 // Move FormField component outside of the main component
@@ -64,7 +42,7 @@ const renderPhoneInput = () => (
       fontWeight: '500',
       fontSize: '1rem',
       whiteSpace: 'nowrap',
-      marginRight: '0.5rem' // small gap
+      marginRight: '0.5rem'
     }}>
       +94
     </span>
@@ -216,7 +194,6 @@ const renderPhoneInput = () => (
               }}
             />
           )}
-          {/* Show custom location input when "other" is selected */}
           {field === 'location' && formData.location === 'other' && (
             <input
               type="text"
@@ -263,7 +240,6 @@ const renderPhoneInput = () => (
         />
       )}
       
-      {/* Display validation error */}
       {validationErrors?.[field] && (
         <div style={{
           color: '#ff4444',
@@ -293,7 +269,6 @@ const AddBusiness = () => {
     customLocation: '',
     district: '',
     locationUrl: '',
-    businessImages: [],
     alwaysOpen: false,
     operatingHours: {
       sunday: { isOpen: false, openTime: '', closeTime: '' },
@@ -396,11 +371,6 @@ const AddBusiness = () => {
       }
     }
 
-    // Image validation
-    if (formData.businessImages.length === 0) {
-      errors.businessImages = 'Please upload at least one business image';
-    }
-
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -410,12 +380,14 @@ const AddBusiness = () => {
     const fetchCategories = async () => {
       try {
         setCategoriesLoading(true);
+        console.log('Fetching categories...');
         const categoryCollection = collection(db, 'Category');
         const categorySnapshot = await getDocs(categoryCollection);
         const categoryList = categorySnapshot.docs.map(doc => ({
           id: doc.id,
           name: doc.data().name
         }));
+        console.log('Categories fetched:', categoryList);
         setCategories(categoryList);
       } catch (error) {
         console.error('Error fetching categories:', error);
@@ -433,6 +405,7 @@ const AddBusiness = () => {
     const fetchLocations = async () => {
       try {
         setLocationsLoading(true);
+        console.log('Fetching locations...');
         const locationsCollection = collection(db, 'Locations');
         const locationsSnapshot = await getDocs(locationsCollection);
         
@@ -448,6 +421,7 @@ const AddBusiness = () => {
         });
         
         const locationList = Array.from(allLocations).sort();
+        console.log('Locations fetched:', locationList);
         setLocations(locationList);
       } catch (error) {
         console.error('Error fetching locations:', error);
@@ -475,21 +449,7 @@ const AddBusiness = () => {
     }
   };
 
-  // Handle image updates from ImageUpload component
-  const handleImagesChange = (newImages) => {
-    setFormData(prev => ({
-      ...prev,
-      businessImages: newImages
-    }));
-
-    // Clear image validation error
-    if (validationErrors.businessImages) {
-      setValidationErrors(prev => ({
-        ...prev,
-        businessImages: undefined
-      }));
-    }
-  };
+  
 
   const handleAlwaysOpenToggle = () => {
     setFormData(prev => ({
@@ -610,7 +570,6 @@ const AddBusiness = () => {
       customLocation: '',
       district: '',
       locationUrl: '',
-      businessImages: [],
       alwaysOpen: false,
       operatingHours: {
         sunday: { isOpen: false, openTime: '', closeTime: '' },
@@ -626,106 +585,131 @@ const AddBusiness = () => {
     setValidationErrors({});
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  console.log('Form submission started');
+  
+  // Check if Firebase is initialized properly
+  if (!db) {
+    console.error('Firebase database not initialized');
+    alert('Database connection error. Please refresh the page.');
+    return;
+  }
+  
+  if (!validateForm() || !validateTimes()) {
+    console.log('Validation failed');
+    alert('Please correct the errors before submitting.');
+    return;
+  }
+
+  
+
+  setLoading(true);
+
+  try {
+    // Prepare data exactly matching the Firestore fields structure
+    const businessData = {
+      // Basic information
+      about: formData.about ? formData.about.trim() : '',
+      address: formData.address ? formData.address.trim() : '',
+      category: formData.category === 'other' 
+        ? (formData.customCategory ? formData.customCategory.trim() : '') 
+        : (formData.category || ''),
+      contact: formData.contact ? `+94${formData.contact}` : '',
+      district: formData.district || '',
+      email: formData.email ? formData.email.toLowerCase().trim() : '',
+      facebook: formData.facebook || '',
+      location: formData.location === 'other' 
+        ? (formData.customLocation ? formData.customLocation.trim() : '') 
+        : (formData.location || ''),
+      locationUrl: formData.locationUrl || '',
+      name: formData.name ? formData.name.trim() : '',
+      website: formData.website || '',
+      whatsapp: formData.whatsapp ? `+94${formData.whatsapp}` : '',
+      
+      // Operating information
+      alwaysOpen: Boolean(formData.alwaysOpen),
+      operatingTimes: formData.alwaysOpen ? null : {
+        sunday: {
+          isOpen: Boolean(formData.operatingHours.sunday?.isOpen),
+          openTime: formData.operatingHours.sunday?.openTime || '',
+          closeTime: formData.operatingHours.sunday?.closeTime || ''
+        },
+        monday: {
+          isOpen: Boolean(formData.operatingHours.monday?.isOpen),
+          openTime: formData.operatingHours.monday?.openTime || '',
+          closeTime: formData.operatingHours.monday?.closeTime || ''
+        },
+        tuesday: {
+          isOpen: Boolean(formData.operatingHours.tuesday?.isOpen),
+          openTime: formData.operatingHours.tuesday?.openTime || '',
+          closeTime: formData.operatingHours.tuesday?.closeTime || ''
+        },
+        wednesday: {
+          isOpen: Boolean(formData.operatingHours.wednesday?.isOpen),
+          openTime: formData.operatingHours.wednesday?.openTime || '',
+          closeTime: formData.operatingHours.wednesday?.closeTime || ''
+        },
+        thursday: {
+          isOpen: Boolean(formData.operatingHours.thursday?.isOpen),
+          openTime: formData.operatingHours.thursday?.openTime || '',
+          closeTime: formData.operatingHours.thursday?.closeTime || ''
+        },
+        friday: {
+          isOpen: Boolean(formData.operatingHours.friday?.isOpen),
+          openTime: formData.operatingHours.friday?.openTime || '',
+          closeTime: formData.operatingHours.friday?.closeTime || ''
+        },
+        saturday: {
+          isOpen: Boolean(formData.operatingHours.saturday?.isOpen),
+          openTime: formData.operatingHours.saturday?.openTime || '',
+          closeTime: formData.operatingHours.saturday?.closeTime || ''
+        }
+      },
+      
+      // Business images
+      businessImages: formData.businessImages
+    };
+
+    console.log('Prepared business data for submission:', businessData);
+
+    // Validate the data using BusinessRequestService
+    const validation = BusinessRequestService.validateBusinessData(businessData);
     
-    if (!validateForm() || !validateTimes()) {
-      alert('Please correct the errors before submitting.');
+    if (!validation.isValid) {
+      console.error('Validation failed:', validation.errors);
+      alert('Please fix the following errors:\n' + validation.errors.join('\n'));
+      setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
+    console.log('Validation passed, submitting to Firestore...');
 
-      // Prepare image URLs for Firestore
-      const imageUrls = formData.businessImages.map(img => ({
-        url: img.url,
-        publicId: img.publicId,
-        name: img.name,
-        width: img.width,
-        height: img.height,
-        format: img.format
-      }));
-
-      // Prepare data for BusinessRequestService format
-      const businessData = {
-        name: formData.name.trim(),
-        address: formData.address.trim(),
-        about: formData.about.trim(),
-        contact: `+94${formData.contact}`, // Add +94 prefix
-        whatsapp: formData.whatsapp ? `+94${formData.whatsapp}` : '', // Add +94 prefix if provided
-        email: formData.email.toLowerCase(),
-        facebook: formData.facebook,
-        website: formData.website,
-        category: formData.category === 'other' ? formData.customCategory.trim() : formData.category,
-        location: formData.location === 'other' ? formData.customLocation.trim() : formData.location,
-        district: formData.district,
-        locationUrl: formData.locationUrl,
-        businessImages: imageUrls,
-        alwaysOpen: formData.alwaysOpen,
-        operatingTimes: formData.alwaysOpen ? null : {
-          monday: {
-            isOpen: formData.operatingHours.monday?.isOpen || false,
-            openTime: formData.operatingHours.monday?.openTime || '',
-            closeTime: formData.operatingHours.monday?.closeTime || ''
-          },
-          tuesday: {
-            isOpen: formData.operatingHours.tuesday?.isOpen || false,
-            openTime: formData.operatingHours.tuesday?.openTime || '',
-            closeTime: formData.operatingHours.tuesday?.closeTime || ''
-          },
-          wednesday: {
-            isOpen: formData.operatingHours.wednesday?.isOpen || false,
-            openTime: formData.operatingHours.wednesday?.openTime || '',
-            closeTime: formData.operatingHours.wednesday?.closeTime || ''
-          },
-          thursday: {
-            isOpen: formData.operatingHours.thursday?.isOpen || false,
-            openTime: formData.operatingHours.thursday?.openTime || '',
-            closeTime: formData.operatingHours.thursday?.closeTime || ''
-          },
-          friday: {
-            isOpen: formData.operatingHours.friday?.isOpen || false,
-            openTime: formData.operatingHours.friday?.openTime || '',
-            closeTime: formData.operatingHours.friday?.closeTime || ''
-          },
-          saturday: {
-            isOpen: formData.operatingHours.saturday?.isOpen || false,
-            openTime: formData.operatingHours.saturday?.openTime || '',
-            closeTime: formData.operatingHours.saturday?.closeTime || ''
-          },
-          sunday: {
-            isOpen: formData.operatingHours.sunday?.isOpen || false,
-            openTime: formData.operatingHours.sunday?.openTime || '',
-            closeTime: formData.operatingHours.sunday?.closeTime || ''
-          }
-        }
-      };
-
-      // Validate the data using BusinessRequestService
-      const validation = BusinessRequestService.validateBusinessData(businessData);
-      
-      if (!validation.isValid) {
-        alert('Please fix the following errors:\n' + validation.errors.join('\n'));
-        return;
-      }
-
-      // Submit the business request using BusinessRequestService
-      const documentId = await BusinessRequestService.addBusinessRequest(businessData);
-      
-      console.log('Business request submitted with ID:', documentId);
-      alert('Business request submitted successfully for approval!');
-      
-      // Reset form
-      resetForm();
-      
-    } catch (error) {
-      console.error('Error submitting business request:', error);
-      alert('Failed to submit business request. Please try again.');
-    } finally {
-      setLoading(false);
+    // Submit the business request using BusinessRequestService
+    const documentId = await BusinessRequestService.addBusinessRequest(businessData);
+    
+    console.log('Business request submitted successfully with ID:', documentId);
+    alert('Business request submitted successfully for approval!');
+    
+    // Reset form
+    resetForm();
+    
+  } catch (error) {
+    console.error('Error submitting business request:', error);
+    
+    // More specific error handling
+    if (error.code === 'permission-denied') {
+      alert('Permission denied. Please check your Firebase security rules.');
+    } else if (error.code === 'unavailable') {
+      alert('Firebase service is temporarily unavailable. Please try again later.');
+    } else {
+      alert(`Failed to submit business request: ${error.message}`);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const OperatingHoursSection = () => (
     <div style={{ marginBottom: '2rem' }}>
@@ -1189,33 +1173,7 @@ const AddBusiness = () => {
                 validationErrors={validationErrors}
               />
 
-              {/* Image Upload Section */}
-              <div style={{ marginBottom: '2rem' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '0.7rem',
-                  color: colors.darkNavy,
-                  fontWeight: 'bold',
-                  fontSize: '1rem'
-                }}>
-                  Business Images <span style={{ color: 'red' }}>*</span>
-                </label>
-                <ImageUpload
-                  onImagesChange={handleImagesChange}
-                  currentImages={formData.businessImages}
-                  maxImages={5}
-                  disabled={loading}
-                />
-                {validationErrors.businessImages && (
-                  <div style={{
-                    color: '#ff4444',
-                    fontSize: '0.8rem',
-                    marginTop: '0.5rem'
-                  }}>
-                    {validationErrors.businessImages}
-                  </div>
-                )}
-              </div>
+              
 
               <button
                 type="submit"

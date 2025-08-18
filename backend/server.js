@@ -4,10 +4,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { testCloudinaryConnection } = require('./config/cloudinary');
-
-// Import routes
-const cloudinaryRoutes = require('./routes/cloudinary');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -42,19 +38,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/cloudinary', cloudinaryRoutes);
-
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,
     availableRoutes: [
-      'GET /health',
-      'GET /api/cloudinary/health',
-      'DELETE /api/cloudinary/delete',
-      'POST /api/cloudinary/delete-multiple'
+      'GET /health'
     ]
   });
 });
@@ -72,27 +62,15 @@ app.use((error, req, res, next) => {
 // Start server
 const startServer = async () => {
   try {
-    // Test Cloudinary connection
-    console.log('🔧 Testing Cloudinary connection...');
-    const cloudinaryConnected = await testCloudinaryConnection();
-    
-    if (!cloudinaryConnected) {
-      console.error('❌ Warning: Cloudinary connection failed. Image operations may not work.');
-    }
-
     app.listen(PORT, () => {
       console.log('🚀 Server started successfully!');
       console.log(`📍 Server running on port ${PORT}`);
       console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-      console.log(`🔗 Cloudinary health: http://localhost:${PORT}/api/cloudinary/health`);
       console.log(`🎯 Environment: ${process.env.NODE_ENV || 'development'}`);
       
       if (process.env.NODE_ENV === 'development') {
         console.log('\n📋 Available endpoints:');
         console.log(`  GET    http://localhost:${PORT}/health`);
-        console.log(`  GET    http://localhost:${PORT}/api/cloudinary/health`);
-        console.log(`  DELETE http://localhost:${PORT}/api/cloudinary/delete`);
-        console.log(`  POST   http://localhost:${PORT}/api/cloudinary/delete-multiple`);
       }
     });
   } catch (error) {
@@ -100,6 +78,7 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
