@@ -62,45 +62,6 @@ const Header = () => {
             gap: '1rem',
             alignItems: 'center'
           }}>
-            <Link to="/">
-              <button
-                style={{
-                  backgroundColor: colors.mediumBlue,
-                  color: 'white',
-                  border: 'none',
-                  padding: '0.7rem 1.5rem', // Larger button
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  transition: 'background-color 0.3s'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = colors.lightBlue}
-                onMouseOut={(e) => e.target.style.backgroundColor = colors.mediumBlue}
-              >
-                Home
-              </button>
-            </Link>
-
-            <Link to="/admin">
-              <button
-                style={{
-                  backgroundColor: colors.lightBlue,
-                  color: 'white',
-                  border: 'none',
-                  padding: '0.7rem 1.5rem', // Larger button
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  transition: 'background-color 0.3s'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = colors.mediumBlue}
-                onMouseOut={(e) => e.target.style.backgroundColor = colors.lightBlue}
-              >
-                Admin Panel
-              </button>
-            </Link>
           </div>
         </div>
       </header>

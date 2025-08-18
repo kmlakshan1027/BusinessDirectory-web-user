@@ -1,10 +1,11 @@
-// pages/Add_Business.js
+//Add_Business.js
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, addDoc, doc } from 'firebase/firestore';
 import { db } from '../../configs/FirebaseConfigs.js';
 import { colors } from '../../utils/colors.js';
-
 import BusinessRequestService from '../../services/BusinessRequestService.js';
+import ImageUpload, { uploadBusinessImages } from '../../components/ImageUpload.js';
+import AlertNotification from '../../components/AlertNotification.js';
 
 // Sri Lankan districts list
 const DISTRICTS = [
@@ -35,49 +36,49 @@ const FormField = ({
     return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
   };
 
-const renderPhoneInput = () => (
-  <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-    <span style={{
-      color: colors.darkNavy,
-      fontWeight: '500',
-      fontSize: '1rem',
-      whiteSpace: 'nowrap',
-      marginRight: '0.5rem'
-    }}>
-      +94
-    </span>
-    <input
-      type="text"
-      value={formData[field]}
-      onChange={(e) => {
-        const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-        if (value.length <= 9) {
-          handleInputChange(field, value);
-        }
-      }}
-      placeholder="712345678"
-      maxLength="9"
-      style={{
-        flex: 1,
-        padding: '0.8rem 1rem',
-        border: `2px solid ${validationErrors?.[field] ? '#ff4444' : colors.lightBlue}`,
-        borderRadius: '8px',
+  const renderPhoneInput = () => (
+    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+      <span style={{
+        color: colors.darkNavy,
+        fontWeight: '500',
         fontSize: '1rem',
-        boxSizing: 'border-box',
-        fontFamily: 'inherit',
-        lineHeight: '1.2'
-      }}
-    />
-    <div style={{
-      fontSize: '0.8rem',
-      color: colors.mediumBlue,
-      marginTop: '0.3rem',
-      marginLeft:'0.3rem'
-    }}>
-      {formData[field].length}/9 digits
+        whiteSpace: 'nowrap',
+        marginRight: '0.5rem'
+      }}>
+        +94
+      </span>
+      <input
+        type="text"
+        value={formData[field]}
+        onChange={(e) => {
+          const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+          if (value.length <= 9) {
+            handleInputChange(field, value);
+          }
+        }}
+        placeholder="712345678"
+        maxLength="9"
+        style={{
+          flex: 1,
+          padding: '0.8rem 1rem',
+          border: `2px solid ${validationErrors?.[field] ? '#ff4444' : colors.lightBlue}`,
+          borderRadius: '8px',
+          fontSize: '1rem',
+          boxSizing: 'border-box',
+          fontFamily: 'inherit',
+          lineHeight: '1.2'
+        }}
+      />
+      <div style={{
+        fontSize: '0.8rem',
+        color: colors.mediumBlue,
+        marginTop: '0.3rem',
+        marginLeft:'0.3rem'
+      }}>
+        {formData[field].length}/9 digits
+      </div>
     </div>
-  </div>
-);
+  );
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
@@ -281,6 +282,8 @@ const AddBusiness = () => {
     }
   });
 
+  // Add image state
+  const [images, setImages] = useState([]);
   const [timeErrors, setTimeErrors] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
   const [categories, setCategories] = useState([]);
@@ -288,6 +291,15 @@ const AddBusiness = () => {
   const [loading, setLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [locationsLoading, setLocationsLoading] = useState(true);
+
+  // Alert state
+  const [alert, setAlert] = useState({
+    isVisible: false,
+    type: 'success',
+    title: '',
+    message: '',
+    duration: 5000
+  });
 
   const daysOfWeek = [
     { key: 'sunday', label: 'Sunday' },
@@ -299,7 +311,22 @@ const AddBusiness = () => {
     { key: 'saturday', label: 'Saturday' }
   ];
 
-  // Validation functions
+  // Alert functions
+  const showAlert = (type, title, message, duration = 5000) => {
+    setAlert({
+      isVisible: true,
+      type,
+      title,
+      message,
+      duration
+    });
+  };
+
+  const closeAlert = () => {
+    setAlert(prev => ({ ...prev, isVisible: false }));
+  };
+
+  // UPDATED VALIDATION FUNCTIONS - Added required validations for images, email, and locationUrl
   const validateForm = () => {
     const errors = {};
 
@@ -308,9 +335,16 @@ const AddBusiness = () => {
     if (!formData.address.trim()) errors.address = 'Address is required';
     if (!formData.about.trim()) errors.about = 'Business description is required';
     if (!formData.contact.trim()) errors.contact = 'Contact number is required';
+    if (!formData.email.trim()) errors.email = 'Email is required'; // NOW REQUIRED
+    if (!formData.locationUrl.trim()) errors.locationUrl = 'Location URL is required'; // NOW REQUIRED
     if (!formData.category) errors.category = 'Category is required';
     if (!formData.location) errors.location = 'Location is required';
     if (!formData.district) errors.district = 'District is required';
+
+    // IMAGES VALIDATION - NOW REQUIRED
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      errors.images = 'At least one business image is required';
+    }
 
     // Business name validation
     if (formData.name.trim().length < 2) {
@@ -327,7 +361,7 @@ const AddBusiness = () => {
       errors.whatsapp = 'WhatsApp number must be exactly 9 digits';
     }
 
-    // Email validation
+    // Email validation - NOW REQUIRED
     if (formData.email) {
       const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(formData.email)) {
@@ -359,6 +393,7 @@ const AddBusiness = () => {
     if (formData.facebook && !urlRegex.test(formData.facebook)) {
       errors.facebook = 'Facebook URL must start with http:// or https://';
     }
+    // Location URL validation - NOW REQUIRED
     if (formData.locationUrl && !urlRegex.test(formData.locationUrl)) {
       errors.locationUrl = 'Location URL must start with http:// or https://';
     }
@@ -380,18 +415,16 @@ const AddBusiness = () => {
     const fetchCategories = async () => {
       try {
         setCategoriesLoading(true);
-        console.log('Fetching categories...');
         const categoryCollection = collection(db, 'Category');
         const categorySnapshot = await getDocs(categoryCollection);
         const categoryList = categorySnapshot.docs.map(doc => ({
           id: doc.id,
           name: doc.data().name
         }));
-        console.log('Categories fetched:', categoryList);
         setCategories(categoryList);
       } catch (error) {
         console.error('Error fetching categories:', error);
-        alert('Error loading categories. Please refresh the page.');
+        showAlert('error', 'Loading Error', 'Error loading categories. Please refresh the page.');
       } finally {
         setCategoriesLoading(false);
       }
@@ -405,7 +438,6 @@ const AddBusiness = () => {
     const fetchLocations = async () => {
       try {
         setLocationsLoading(true);
-        console.log('Fetching locations...');
         const locationsCollection = collection(db, 'Locations');
         const locationsSnapshot = await getDocs(locationsCollection);
         
@@ -421,11 +453,10 @@ const AddBusiness = () => {
         });
         
         const locationList = Array.from(allLocations).sort();
-        console.log('Locations fetched:', locationList);
         setLocations(locationList);
       } catch (error) {
         console.error('Error fetching locations:', error);
-        alert('Error loading locations. Please refresh the page.');
+        showAlert('error', 'Loading Error', 'Error loading locations. Please refresh the page.');
       } finally {
         setLocationsLoading(false);
       }
@@ -448,8 +479,6 @@ const AddBusiness = () => {
       }));
     }
   };
-
-  
 
   const handleAlwaysOpenToggle = () => {
     setFormData(prev => ({
@@ -581,134 +610,208 @@ const AddBusiness = () => {
         saturday: { isOpen: false, openTime: '', closeTime: '' }
       }
     });
+    setImages([]);
     setTimeErrors({});
     setValidationErrors({});
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  console.log('Form submission started');
-  
-  // Check if Firebase is initialized properly
-  if (!db) {
-    console.error('Firebase database not initialized');
-    alert('Database connection error. Please refresh the page.');
-    return;
-  }
-  
-  if (!validateForm() || !validateTimes()) {
-    console.log('Validation failed');
-    alert('Please correct the errors before submitting.');
-    return;
-  }
-
-  
-
-  setLoading(true);
-
-  try {
-    // Prepare data exactly matching the Firestore fields structure
-    const businessData = {
-      // Basic information
-      about: formData.about ? formData.about.trim() : '',
-      address: formData.address ? formData.address.trim() : '',
-      category: formData.category === 'other' 
-        ? (formData.customCategory ? formData.customCategory.trim() : '') 
-        : (formData.category || ''),
-      contact: formData.contact ? `+94${formData.contact}` : '',
-      district: formData.district || '',
-      email: formData.email ? formData.email.toLowerCase().trim() : '',
-      facebook: formData.facebook || '',
-      location: formData.location === 'other' 
-        ? (formData.customLocation ? formData.customLocation.trim() : '') 
-        : (formData.location || ''),
-      locationUrl: formData.locationUrl || '',
-      name: formData.name ? formData.name.trim() : '',
-      website: formData.website || '',
-      whatsapp: formData.whatsapp ? `+94${formData.whatsapp}` : '',
-      
-      // Operating information
-      alwaysOpen: Boolean(formData.alwaysOpen),
-      operatingTimes: formData.alwaysOpen ? null : {
-        sunday: {
-          isOpen: Boolean(formData.operatingHours.sunday?.isOpen),
-          openTime: formData.operatingHours.sunday?.openTime || '',
-          closeTime: formData.operatingHours.sunday?.closeTime || ''
-        },
-        monday: {
-          isOpen: Boolean(formData.operatingHours.monday?.isOpen),
-          openTime: formData.operatingHours.monday?.openTime || '',
-          closeTime: formData.operatingHours.monday?.closeTime || ''
-        },
-        tuesday: {
-          isOpen: Boolean(formData.operatingHours.tuesday?.isOpen),
-          openTime: formData.operatingHours.tuesday?.openTime || '',
-          closeTime: formData.operatingHours.tuesday?.closeTime || ''
-        },
-        wednesday: {
-          isOpen: Boolean(formData.operatingHours.wednesday?.isOpen),
-          openTime: formData.operatingHours.wednesday?.openTime || '',
-          closeTime: formData.operatingHours.wednesday?.closeTime || ''
-        },
-        thursday: {
-          isOpen: Boolean(formData.operatingHours.thursday?.isOpen),
-          openTime: formData.operatingHours.thursday?.openTime || '',
-          closeTime: formData.operatingHours.thursday?.closeTime || ''
-        },
-        friday: {
-          isOpen: Boolean(formData.operatingHours.friday?.isOpen),
-          openTime: formData.operatingHours.friday?.openTime || '',
-          closeTime: formData.operatingHours.friday?.closeTime || ''
-        },
-        saturday: {
-          isOpen: Boolean(formData.operatingHours.saturday?.isOpen),
-          openTime: formData.operatingHours.saturday?.openTime || '',
-          closeTime: formData.operatingHours.saturday?.closeTime || ''
-        }
-      },
-      
-      
-    };
-
-    console.log('Prepared business data for submission:', businessData);
-
-    // Validate the data using BusinessRequestService
-    const validation = BusinessRequestService.validateBusinessData(businessData);
+  // UPDATED SUBMIT HANDLER - Enhanced validation
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    if (!validation.isValid) {
-      console.error('Validation failed:', validation.errors);
-      alert('Please fix the following errors:\n' + validation.errors.join('\n'));
-      setLoading(false);
+    console.log('=== FORM SUBMISSION START ===');
+    console.log('Images to upload:', images?.length || 0);
+    
+    // Check Firebase initialization
+    if (!db) {
+      console.error('Firebase database not initialized');
+      showAlert('error', 'Connection Error', 'Database connection error. Please refresh the page.', 0);
+      return;
+    }
+    
+    // Validate form and times
+    if (!validateForm() || !validateTimes()) {
+      console.log('Form validation failed');
+      showAlert('warning', 'Validation Error', 'Please correct the errors before submitting.', 6000);
       return;
     }
 
-    console.log('Validation passed, submitting to Firestore...');
+    setLoading(true);
 
-    // Submit the business request using BusinessRequestService
-    const documentId = await BusinessRequestService.addBusinessRequest(businessData);
-    
-    console.log('Business request submitted successfully with ID:', documentId);
-    alert('Business request submitted successfully for approval!');
-    
-    // Reset form
-    resetForm();
-    
-  } catch (error) {
-    console.error('Error submitting business request:', error);
-    
-    // More specific error handling
-    if (error.code === 'permission-denied') {
-      alert('Permission denied. Please check your Firebase security rules.');
-    } else if (error.code === 'unavailable') {
-      alert('Firebase service is temporarily unavailable. Please try again later.');
-    } else {
-      alert(`Failed to submit business request: ${error.message}`);
+    try {
+      // Generate unique business ID
+      const businessId = `business_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('Business ID:', businessId);
+      
+      let imageUrls = [];
+      
+      // Upload images - NOW REQUIRED
+      if (images && Array.isArray(images) && images.length > 0) {
+        console.log('Uploading', images.length, 'images...');
+        
+        try {
+          // Upload images to Firebase Storage
+          const uploadedImageData = await uploadBusinessImages(images, businessId);
+          console.log('Upload result:', uploadedImageData);
+          
+          // Validate and extract download URLs
+          if (uploadedImageData && Array.isArray(uploadedImageData)) {
+            imageUrls = uploadedImageData
+              .map(img => img?.downloadURL)
+              .filter(url => url && typeof url === 'string' && url.trim().length > 0);
+            
+            console.log('Extracted image URLs:', imageUrls);
+            
+            if (imageUrls.length === 0) {
+              throw new Error('No valid image URLs were generated');
+            }
+          } else {
+            throw new Error('Image upload function returned invalid data');
+          }
+          
+        } catch (imageError) {
+          console.error('Image upload error:', imageError);
+          showAlert('error', 'Upload Failed', `Error uploading images: ${imageError.message}. Please try again.`, 0);
+          setLoading(false);
+          return;
+        }
+      } else {
+        // This should never happen now since images are required
+        console.error('No images provided - this should be caught by validation');
+        showAlert('error', 'Images Required', 'At least one business image is required.', 0);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Final imageUrls for Firestore:', imageUrls);
+
+      // Prepare business data for Firestore
+      const businessData = {
+        // Basic information
+        name: formData.name.trim(),
+        address: formData.address.trim(),
+        about: formData.about.trim(),
+        contact: formData.contact ? `+94${formData.contact}` : '',
+        whatsapp: formData.whatsapp ? `+94${formData.whatsapp}` : '',
+        email: formData.email.toLowerCase().trim(), // NOW REQUIRED
+        
+        // Business details
+        category: formData.category === 'other' 
+          ? (formData.customCategory?.trim() || '') 
+          : (formData.category || ''),
+        location: formData.location === 'other' 
+          ? (formData.customLocation?.trim() || '') 
+          : (formData.location || ''),
+        district: formData.district || '',
+        
+        // URLs
+        website: formData.website || '',
+        facebook: formData.facebook || '',
+        locationUrl: formData.locationUrl.trim(), // NOW REQUIRED
+        
+        // Operating information
+        alwaysOpen: Boolean(formData.alwaysOpen),
+        operatingTimes: formData.alwaysOpen ? null : {
+          sunday: {
+            isOpen: Boolean(formData.operatingHours.sunday?.isOpen),
+            openTime: formData.operatingHours.sunday?.openTime || '',
+            closeTime: formData.operatingHours.sunday?.closeTime || ''
+          },
+          monday: {
+            isOpen: Boolean(formData.operatingHours.monday?.isOpen),
+            openTime: formData.operatingHours.monday?.openTime || '',
+            closeTime: formData.operatingHours.monday?.closeTime || ''
+          },
+          tuesday: {
+            isOpen: Boolean(formData.operatingHours.tuesday?.isOpen),
+            openTime: formData.operatingHours.tuesday?.openTime || '',
+            closeTime: formData.operatingHours.tuesday?.closeTime || ''
+          },
+          wednesday: {
+            isOpen: Boolean(formData.operatingHours.wednesday?.isOpen),
+            openTime: formData.operatingHours.wednesday?.openTime || '',
+            closeTime: formData.operatingHours.wednesday?.closeTime || ''
+          },
+          thursday: {
+            isOpen: Boolean(formData.operatingHours.thursday?.isOpen),
+            openTime: formData.operatingHours.thursday?.openTime || '',
+            closeTime: formData.operatingHours.thursday?.closeTime || ''
+          },
+          friday: {
+            isOpen: Boolean(formData.operatingHours.friday?.isOpen),
+            openTime: formData.operatingHours.friday?.openTime || '',
+            closeTime: formData.operatingHours.friday?.closeTime || ''
+          },
+          saturday: {
+            isOpen: Boolean(formData.operatingHours.saturday?.isOpen),
+            openTime: formData.operatingHours.saturday?.openTime || '',
+            closeTime: formData.operatingHours.saturday?.closeTime || ''
+          }
+        },
+        
+        // *** CRITICAL: Image URLs field ***
+        imageUrl: imageUrls, // This will be an array of image URLs (now guaranteed to have at least one)
+        
+        // Metadata
+        businessId: businessId,
+        submissionDate: new Date().toISOString(),
+        status: 'pending',
+        approved: false,
+        rejected: false,
+        lastUpdated: new Date().toISOString(),
+        requestDate: new Date().toISOString()
+      };
+
+      console.log('Business data to submit:');
+      console.log('- imageUrl field exists:', 'imageUrl' in businessData);
+      console.log('- imageUrl is array:', Array.isArray(businessData.imageUrl));
+      console.log('- imageUrl length:', businessData.imageUrl?.length || 0);
+      console.log('- imageUrl content:', businessData.imageUrl);
+
+      // Submit to Firestore
+      console.log('Submitting to TemporaryBusinessDetails...');
+      const docRef = await addDoc(collection(db, 'TemporaryBusinessDetails'), businessData);
+      const documentId = docRef.id;
+      
+      console.log('Document created successfully:', documentId);
+      
+      // Update document with its own ID for reference
+      await updateDoc(doc(db, 'TemporaryBusinessDetails', documentId), {
+        documentId: documentId
+      });
+      
+      console.log('Document updated with ID reference');
+      console.log('=== SUBMISSION SUCCESS ===');
+      
+      // Success alert
+      const imageCount = imageUrls.length;
+      showAlert(
+        'success', 
+        '🎉 Business Submitted Successfully!', 
+        `Your business "${formData.name}" has been submitted for review and will be published soon. ${imageCount} image${imageCount > 1 ? 's' : ''} uploaded successfully.`,
+        6000
+      );
+      
+      // Reset form
+      resetForm();
+      
+    } catch (error) {
+      console.error('=== SUBMISSION ERROR ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      
+      showAlert(
+        'error',
+        'Submission Failed',
+        `Failed to submit business request: ${error.message}. Please try again or contact support if the problem persists.`,
+        0
+      );
+    } finally {
+      setLoading(false);
+      console.log('=== FORM SUBMISSION END ===');
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const OperatingHoursSection = () => (
     <div style={{ marginBottom: '2rem' }}>
@@ -899,6 +1002,17 @@ const handleSubmit = async (e) => {
 
   return (
     <>
+      {/* Alert Notification */}
+      <AlertNotification
+        isVisible={alert.isVisible}
+        onClose={closeAlert}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        duration={alert.duration}
+        position="top-center"
+      />
+
       <style>
         {`
           @media (max-width: 768px) {
@@ -1085,6 +1199,34 @@ const handleSubmit = async (e) => {
                 validationErrors={validationErrors}
               />
 
+              {/* Image Upload Section - NOW REQUIRED */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '0.7rem',
+                  color: colors.darkNavy,
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}>
+                  Business Images <span style={{ color: 'red' }}>*</span>
+                </label>
+                <ImageUpload
+                  images={images}
+                  setImages={setImages}
+                  validationErrors={validationErrors}
+                  setValidationErrors={setValidationErrors}
+                />
+                {validationErrors?.images && (
+                  <div style={{
+                    color: '#ff4444',
+                    fontSize: '0.8rem',
+                    marginTop: '0.3rem'
+                  }}>
+                    {validationErrors.images}
+                  </div>
+                )}
+              </div>
+
               <OperatingHoursSection />
 
               <div className="form-grid" style={{
@@ -1111,6 +1253,7 @@ const handleSubmit = async (e) => {
                   field="email"
                   type="email"
                   placeholder="business@example.com"
+                  required
                   formData={formData}
                   handleInputChange={handleInputChange}
                   categories={categories}
@@ -1162,6 +1305,7 @@ const handleSubmit = async (e) => {
                 field="locationUrl"
                 type="url"
                 placeholder="https://maps.google.com/..."
+                required
                 formData={formData}
                 handleInputChange={handleInputChange}
                 categories={categories}
@@ -1171,8 +1315,6 @@ const handleSubmit = async (e) => {
                 locationsLoading={locationsLoading}
                 validationErrors={validationErrors}
               />
-
-              
 
               <button
                 type="submit"
