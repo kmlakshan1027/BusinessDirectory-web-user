@@ -668,8 +668,7 @@ const handleSubmit = async (e) => {
         }
       },
       
-      // Business images
-      businessImages: formData.businessImages
+      
     };
 
     console.log('Prepared business data for submission:', businessData);
