@@ -537,8 +537,8 @@ const Home = () => {
               textAlign: 'center',
               opacity: 0.8
             }}>
-              For business updates and removals, you'll need your Business ID in the format <strong>BIZ-XX-XXXX</strong>. 
-              New businesses will receive their unique ID immediately after registration completion.
+              For business updates and removals, you'll need your Business ID.
+              Newly registered businesses will receive their unique ID immediately upon completing the registration process.
             </p>
           </div>
         </div>

@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../configs/FirebaseConfigs.js';
 import { colors } from '../../utils/colors.js';
+import ImageUpload, { uploadBusinessImages } from '../../components/ImageUpload.js';
+import AlertNotification from '../../components/AlertNotification.js';
 
 const Update_Business = () => {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ const Update_Business = () => {
     newLocation: '',
     customLocation: '',
     newDistrict: '',
+    otherDescription: '', // New field for 'Other' option
     alwaysOpen: false,
     operatingHours: {
       sunday: { isOpen: false, openTime: '', closeTime: '' },
@@ -44,12 +47,24 @@ const Update_Business = () => {
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [timeErrors, setTimeErrors] = useState({});
   
+  // Image state for Business Image updates
+  const [images, setImages] = useState([]);
+  
   // Data fetching states
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [locationsLoading, setLocationsLoading] = useState(false);
+
+  // Alert state
+  const [alert, setAlert] = useState({
+    isVisible: false,
+    type: 'success',
+    title: '',
+    message: '',
+    duration: 5000
+  });
 
   const fieldOptions = [
     'Business Name',
@@ -65,6 +80,7 @@ const Update_Business = () => {
     'Website',
     'Location URL',
     'Operating Hours',
+    'Business Images', // New option
     'Other'
   ];
 
@@ -77,6 +93,21 @@ const Update_Business = () => {
     { key: 'friday', label: 'Friday' },
     { key: 'saturday', label: 'Saturday' }
   ];
+
+  // Alert functions
+  const showAlert = (type, title, message, duration = 5000) => {
+    setAlert({
+      isVisible: true,
+      type,
+      title,
+      message,
+      duration
+    });
+  };
+
+  const closeAlert = () => {
+    setAlert(prev => ({ ...prev, isVisible: false }));
+  };
 
   // Fetch categories from Firestore
   useEffect(() => {
@@ -93,6 +124,7 @@ const Update_Business = () => {
           setCategories(categoryList);
         } catch (error) {
           console.error('Error fetching categories:', error);
+          showAlert('error', 'Loading Error', 'Error loading categories. Please try again.');
         } finally {
           setCategoriesLoading(false);
         }
@@ -131,6 +163,7 @@ const Update_Business = () => {
           setDistricts(Array.from(allDistricts).sort());
         } catch (error) {
           console.error('Error fetching locations:', error);
+          showAlert('error', 'Loading Error', 'Error loading locations. Please try again.');
         } finally {
           setLocationsLoading(false);
         }
@@ -143,7 +176,7 @@ const Update_Business = () => {
   // Fetch business data when Business ID changes
   useEffect(() => {
     const fetchBusinessData = async () => {
-      if (!formData.businessId || !isValidBusinessIdFormat(formData.businessId)) {
+      if (!formData.businessId.trim()) {
         setBusinessData(null);
         setBusinessNotFound(false);
         return;
@@ -154,7 +187,7 @@ const Update_Business = () => {
 
       try {
         const businessCollection = collection(db, 'BusinessList');
-        const q = query(businessCollection, where('business_ID', '==', formData.businessId));
+        const q = query(businessCollection, where('business_ID', '==', formData.businessId.trim()));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
@@ -203,10 +236,9 @@ const Update_Business = () => {
     const { name, value } = e.target;
     
     if (name === 'businessId') {
-      const upperValue = value.toUpperCase();
       setFormData(prev => ({
         ...prev,
-        [name]: upperValue
+        [name]: value.trim()
       }));
     } else if (name === 'newContact' || name === 'newWhatsApp') {
       // Handle phone numbers - only allow 9 digits
@@ -239,8 +271,6 @@ const Update_Business = () => {
       }));
     }
   };
-
-  
 
   // Operating hours handlers
   const handleAlwaysOpenToggle = () => {
@@ -329,19 +359,11 @@ const Update_Business = () => {
     return !hasErrors;
   };
 
-  // Validate Business ID format
-  const isValidBusinessIdFormat = (businessId) => {
-    const regex = /^BIZ-[A-Z0-9]{2}-[A-Z0-9]{4}$/;
-    return regex.test(businessId);
-  };
-
   const validateForm = () => {
     const newErrors = {};
     
     if (!formData.businessId.trim()) {
       newErrors.businessId = 'Business ID is required';
-    } else if (!isValidBusinessIdFormat(formData.businessId)) {
-      newErrors.businessId = 'Business ID must be in format: BIZ-XX-XXXX (e.g., BIZ-01-0001)';
     } else if (businessNotFound) {
       newErrors.businessId = 'Business ID not found in our records';
     }
@@ -351,7 +373,7 @@ const Update_Business = () => {
     }
 
     // Validate specific fields based on fieldToUpdate
-    if (formData.fieldToUpdate && formData.fieldToUpdate !== 'Other') {
+    if (formData.fieldToUpdate) {
       switch (formData.fieldToUpdate) {
         case 'Business Name':
           if (!formData.newBusinessName.trim()) {
@@ -472,7 +494,21 @@ const Update_Business = () => {
           }
           break;
 
-        
+        case 'Business Images':
+          if (!images || images.length === 0) {
+            newErrors.images = 'New business images are required. Please upload at least one image.';
+          } else if (images.length > 5) {
+            newErrors.images = 'Maximum 5 images allowed';
+          }
+          break;
+
+        case 'Other':
+          if (!formData.otherDescription.trim()) {
+            newErrors.otherDescription = 'Please describe what you want to change';
+          } else if (formData.otherDescription.trim().length < 10) {
+            newErrors.otherDescription = 'Description must be at least 10 characters';
+          }
+          break;
       }
     }
     
@@ -488,20 +524,58 @@ const Update_Business = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      showAlert('warning', 'Validation Error', 'Please correct the errors before submitting.');
       return;
     }
 
     // Validate operating hours if updating operating hours
     if (formData.fieldToUpdate === 'Operating Hours' && !validateTimes()) {
+      showAlert('warning', 'Time Validation Error', 'Please correct the operating hours before submitting.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Prepare the new value based on field type
       let newValue = '';
+      let imageUrls = [];
       
+      // Handle image upload for Business Images
+      if (formData.fieldToUpdate === 'Business Images' && images && images.length > 0) {
+        try {
+          console.log('Uploading', images.length, 'images for business update...');
+          
+          // Generate unique update ID for image storage
+          const updateId = `update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Upload images to Firebase Storage
+          const uploadedImageData = await uploadBusinessImages(images, updateId);
+          console.log('Upload result:', uploadedImageData);
+          
+          // Validate and extract download URLs
+          if (uploadedImageData && Array.isArray(uploadedImageData)) {
+            imageUrls = uploadedImageData
+              .map(img => img?.downloadURL)
+              .filter(url => url && typeof url === 'string' && url.trim().length > 0);
+            
+            console.log('Extracted image URLs:', imageUrls);
+            
+            if (imageUrls.length === 0) {
+              throw new Error('No valid image URLs were generated');
+            }
+          } else {
+            throw new Error('Image upload function returned invalid data');
+          }
+          
+        } catch (imageError) {
+          console.error('Image upload error:', imageError);
+          showAlert('error', 'Upload Failed', `Error uploading images: ${imageError.message}. Please try again.`, 0);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
+      // Prepare the new value based on field type
       switch (formData.fieldToUpdate) {
         case 'Business Name':
           newValue = formData.newBusinessName.trim();
@@ -548,13 +622,18 @@ const Update_Business = () => {
             operatingTimes: formData.alwaysOpen ? null : formData.operatingHours
           });
           break;
-        
+        case 'Business Images':
+          newValue = JSON.stringify(imageUrls);
+          break;
+        case 'Other':
+          newValue = formData.otherDescription.trim();
+          break;
         default:
           newValue = 'See description for details';
       }
 
-      // Add to Temporary_Update_Business collection for review
-      await addDoc(collection(db, 'Temporary_Update_Business'), {
+      // Prepare update request data
+      const updateRequestData = {
         businessId: formData.businessId.trim(),
         businessName: businessData?.name || 'Unknown',
         fieldToUpdate: formData.fieldToUpdate,
@@ -563,10 +642,30 @@ const Update_Business = () => {
         requestedAt: new Date(),
         status: 'pending_review',
         reviewedBy: null,
-        reviewedAt: null
-      });
+        reviewedAt: null,
+        // Add image URLs if updating business images
+        ...(formData.fieldToUpdate === 'Business Images' && { 
+          newImageUrls: imageUrls,
+          imageCount: imageUrls.length 
+        }),
+        // Add other description if applicable
+        ...(formData.fieldToUpdate === 'Other' && { 
+          description: formData.otherDescription.trim() 
+        })
+      };
 
-      alert('Update request submitted successfully! Your request will be reviewed and processed soon.');
+      // Add to Temporary-Update-Requests collection for review
+      await addDoc(collection(db, 'Temporary-Update-Requests'), updateRequestData);
+
+      const imageCountText = formData.fieldToUpdate === 'Business Images' ? 
+        ` with ${imageUrls.length} image${imageUrls.length > 1 ? 's' : ''}` : '';
+      
+      showAlert(
+        'success', 
+        'Update Request Submitted!', 
+        `Your update request for "${businessData?.name || 'your business'}" has been submitted successfully${imageCountText}. Our team will review and process your request soon.`,
+        6000
+      );
       
       // Reset form
       setFormData({
@@ -586,6 +685,7 @@ const Update_Business = () => {
         newLocation: '',
         customLocation: '',
         newDistrict: '',
+        otherDescription: '',
         alwaysOpen: false,
         operatingHours: {
           sunday: { isOpen: false, openTime: '', closeTime: '' },
@@ -597,16 +697,19 @@ const Update_Business = () => {
           saturday: { isOpen: false, openTime: '', closeTime: '' }
         }
       });
+      setImages([]);
       setBusinessData(null);
       setBusinessNotFound(false);
       setTimeErrors({});
       
-      // Navigate back to home
-      navigate('/');
+      // Navigate back to home after 2 seconds
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
       
     } catch (error) {
       console.error('Error submitting update request:', error);
-      alert('Failed to submit update request. Please try again.');
+      showAlert('error', 'Submission Failed', `Failed to submit update request: ${error.message}. Please try again.`, 0);
     } finally {
       setIsSubmitting(false);
     }
@@ -632,13 +735,10 @@ const Update_Business = () => {
         alwaysOpen: businessData.alwaysOpen || false,
         operatingTimes: businessData.operatingTimes || null
       });
-      
+      case 'Business Images': return `Current images: ${businessData.imageUrl?.length || 0} image(s)`;
+      case 'Other': return 'N/A - See description';
       default: return 'N/A';
     }
-  };
-
-  const getCharacterCount = (text) => {
-    return text.length;
   };
 
   const formatDate = (timestamp) => {
@@ -672,7 +772,7 @@ const Update_Business = () => {
 
   // Dynamic form field renderer
   const renderDynamicField = () => {
-    if (!formData.fieldToUpdate || formData.fieldToUpdate === 'Other') {
+    if (!formData.fieldToUpdate) {
       return null;
     }
 
@@ -1422,14 +1522,125 @@ const Update_Business = () => {
           </div>
         );
 
-      
+      case 'Business Images':
+        return (
+          <div style={{ marginBottom: '2rem' }}>
+            <ImageUpload
+              images={images}
+              setImages={setImages}
+              validationErrors={errors}
+              setValidationErrors={setErrors}
+              maxImages={5}
+            />
+            {errors.images && (
+              <div style={{
+                color: '#ff4444',
+                fontSize: '0.8rem',
+                marginTop: '0.3rem'
+              }}>
+                {errors.images}
+              </div>
+            )}
+            
+            {/* Display current images if available */}
+            {businessData?.imageUrl && businessData.imageUrl.length > 0 && (
+              <div style={{ marginTop: '1.5rem' }}>
+                <h4 style={{
+                  color: colors.darkNavy,
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  marginBottom: '0.8rem'
+                }}>
+                  Current Business Images ({businessData.imageUrl.length}):
+                </h4>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                  gap: '0.8rem'
+                }}>
+                  {businessData.imageUrl.slice(0, 5).map((url, index) => (
+                    <div key={index} style={{
+                      position: 'relative',
+                      aspectRatio: '1',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: `2px solid ${colors.lightBlue}`
+                    }}>
+                      <img
+                        src={url}
+                        alt={`Current business image ${index + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'Other':
+        return (
+          <div style={{ marginBottom: '2rem' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '0.7rem',
+              color: colors.darkNavy,
+              fontWeight: 'bold',
+              fontSize: '1rem'
+            }}>
+              Describe What You Want to Change <span style={{ color: 'red' }}>*</span>
+            </label>
+            <textarea
+              name="otherDescription"
+              value={formData.otherDescription}
+              onChange={handleInputChange}
+              placeholder="Please describe in detail what you want to update or change about your business..."
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                border: `2px solid ${errors.otherDescription ? '#ff4444' : colors.lightBlue}`,
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                boxSizing: 'border-box'
+              }}
+            />
+            <div style={{
+              fontSize: '0.8rem',
+              color: colors.mediumBlue,
+              marginTop: '0.3rem',
+              textAlign: 'right'
+            }}>
+              {formData.otherDescription.length} characters
+            </div>
+            {errors.otherDescription && (
+              <div style={{
+                color: '#ff4444',
+                fontSize: '0.8rem',
+                marginTop: '0.3rem'
+              }}>
+                {errors.otherDescription}
+              </div>
+            )}
+          </div>
+        );
 
       default:
         return null;
     }
   };
 
-  // Business Card Component (same as original)
+  // Business Card Component (updated to show current images)
   const BusinessCard = ({ business }) => (
     <div style={{
       backgroundColor: 'white',
@@ -1456,6 +1667,65 @@ const Update_Business = () => {
         {getStatusText(business.status)}
       </div>
 
+      {/* Business Images */}
+      {business.imageUrl && business.imageUrl.length > 0 && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h4 style={{
+            color: colors.darkNavy,
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.8rem'
+          }}>
+            Business Images ({business.imageUrl.length}):
+          </h4>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+            gap: '0.5rem',
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
+            {business.imageUrl.slice(0, 8).map((url, index) => (
+              <div key={index} style={{
+                position: 'relative',
+                aspectRatio: '1',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                border: `1px solid ${colors.lightBlue}`
+              }}>
+                <img
+                  src={url}
+                  alt={`Business image ${index + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+            ))}
+            {business.imageUrl.length > 8 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                aspectRatio: '1',
+                backgroundColor: colors.lightGray,
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                color: colors.darkNavy,
+                fontWeight: 'bold'
+              }}>
+                +{business.imageUrl.length - 8} more
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr',
@@ -1463,7 +1733,6 @@ const Update_Business = () => {
         marginBottom: '1rem'
       }}>
         
-
         {/* Main Content Grid */}
         <div style={{
           display: 'grid',
@@ -1641,6 +1910,17 @@ const Update_Business = () => {
 
   return (
     <>
+      {/* Alert Notification */}
+      <AlertNotification
+        isVisible={alert.isVisible}
+        onClose={closeAlert}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        duration={alert.duration}
+        position="top-center"
+      />
+
       <style>
         {`
           @keyframes spin {
@@ -1716,7 +1996,8 @@ const Update_Business = () => {
               lineHeight: '1.6',
               fontSize: '1.1rem'
             }}>
-              Please provide your business ID and select the field you want to update. Our team will review your request and update your business information accordingly.
+              Please provide your business ID and select the field you want to update. You can find your Business ID in the 'My Businesses' section of the mobile app. 
+              Our team will review your request and update your business information accordingly.
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -1741,17 +2022,15 @@ const Update_Business = () => {
                     name="businessId"
                     value={formData.businessId}
                     onChange={handleInputChange}
-                    placeholder="BIZ-XX-XXXX (e.g., BIZ-01-0001)"
+                    placeholder="Enter your business ID"
                     style={{
                       width: '100%',
                       padding: '1rem',
-                      border: `2px solid ${errors.businessId ? '#ff4444' : businessData ? '#00cc44' : isValidBusinessIdFormat(formData.businessId) ? (loadingBusiness ? '#ffc107' : '#00cc44') : colors.lightBlue}`,
+                      border: `2px solid ${errors.businessId ? '#ff4444' : businessData ? '#00cc44' : (loadingBusiness ? '#ffc107' : colors.lightBlue)}`,
                       borderRadius: '8px',
                       fontSize: '1rem',
                       fontFamily: 'inherit',
-                      boxSizing: 'border-box',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
+                      boxSizing: 'border-box'
                     }}
                   />
                   <div style={{
@@ -1764,11 +2043,11 @@ const Update_Business = () => {
                       color: colors.mediumBlue,
                       fontSize: '0.8rem'
                     }}>
-                      Format: BIZ-XX-XXXX
+                      Enter your business ID to find your business
                     </small>
                     {formData.businessId && (
                       <div style={{
-                        color: businessData ? '#00cc44' : businessNotFound ? '#ff4444' : isValidBusinessIdFormat(formData.businessId) ? (loadingBusiness ? '#ffc107' : '#00cc44') : '#ff6600',
+                        color: businessData ? '#00cc44' : businessNotFound ? '#ff4444' : (loadingBusiness ? '#ffc107' : colors.mediumBlue),
                         fontSize: '0.8rem',
                         fontWeight: '500',
                         display: 'flex',
@@ -1785,16 +2064,14 @@ const Update_Business = () => {
                               borderRadius: '50%',
                               animation: 'spin 1s linear infinite'
                             }}></div>
-                            Checking...
+                            Searching...
                           </>
                         ) : businessData ? (
                           '✓ Business Found'
                         ) : businessNotFound ? (
                           '✗ Not Found'
-                        ) : isValidBusinessIdFormat(formData.businessId) ? (
-                          '✓ Valid Format'
                         ) : (
-                          '⚠ Invalid Format'
+                          'Enter ID to search'
                         )}
                       </div>
                     )}
@@ -1868,6 +2145,34 @@ const Update_Business = () => {
                 </div>
               )}
 
+              {/* Show current value */}
+              {businessData && formData.fieldToUpdate && formData.fieldToUpdate !== 'Other' && (
+                <div style={{
+                  backgroundColor: '#f8f9ff',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  marginBottom: '1.5rem',
+                  border: `1px solid ${colors.lightBlue}`
+                }}>
+                  <h4 style={{
+                    color: colors.darkNavy,
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Current {formData.fieldToUpdate}:
+                  </h4>
+                  <p style={{
+                    color: colors.mediumBlue,
+                    fontSize: '0.95rem',
+                    margin: 0,
+                    wordBreak: 'break-word'
+                  }}>
+                    {getCurrentValue()}
+                  </p>
+                </div>
+              )}
+
               {/* Dynamic form field based on selection */}
               {renderDynamicField()}
 
@@ -1912,7 +2217,21 @@ const Update_Business = () => {
                     gap: '0.5rem'
                   }}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                  {isSubmitting ? (
+                    <>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid #ffffff',
+                        borderTop: '2px solid transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Update Request'
+                  )}
                 </button>
               </div>
             </form>

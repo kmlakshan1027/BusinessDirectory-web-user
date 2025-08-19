@@ -30,7 +30,8 @@ const FormField = ({
   districts,
   validationErrors,
   maxLength,
-  showWordCount = false
+  showWordCount = false,
+  subtext
 }) => {
   const getWordCount = (text) => {
     return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
@@ -215,30 +216,41 @@ const FormField = ({
           )}
         </div>
       ) : (
-        <input
-          type={type}
-          value={formData[field]}
-          onChange={(e) => {
-            let value = e.target.value;
-            
-            // Email validation - only allow simple letters, numbers, @ and .
-            if (type === 'email') {
-              value = value.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase();
-            }
-            
-            handleInputChange(field, value);
-          }}
-          placeholder={placeholder}
-          style={{
-            width: '100%',
-            padding: '1rem',
-            border: `2px solid ${validationErrors?.[field] ? '#ff4444' : colors.lightBlue}`,
-            borderRadius: '8px',
-            fontSize: '1rem',
-            boxSizing: 'border-box',
-            fontFamily: 'inherit'
-          }}
-        />
+        <div>
+          <input
+            type={type}
+            value={formData[field]}
+            onChange={(e) => {
+              let value = e.target.value;
+              
+              // Email validation - only allow simple letters, numbers, @ and .
+              if (type === 'email') {
+                value = value.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase();
+              }
+              
+              handleInputChange(field, value);
+            }}
+            placeholder={placeholder}
+            style={{
+              width: '100%',
+              padding: '1rem',
+              border: `2px solid ${validationErrors?.[field] ? '#ff4444' : colors.lightBlue}`,
+              borderRadius: '8px',
+              fontSize: '1rem',
+              boxSizing: 'border-box',
+              fontFamily: 'inherit'
+            }}
+          />
+          {subtext && (
+            <div style={{
+              fontSize: '0.8rem',
+              color: colors.mediumBlue,
+              marginTop: '0.3rem'
+            }}>
+              {subtext}
+            </div>
+          )}
+        </div>
       )}
       
       {validationErrors?.[field] && (
@@ -769,14 +781,14 @@ const AddBusiness = () => {
       console.log('- imageUrl content:', businessData.imageUrl);
 
       // Submit to Firestore
-      console.log('Submitting to TemporaryBusinessDetails...');
-      const docRef = await addDoc(collection(db, 'TemporaryBusinessDetails'), businessData);
+      console.log('Submitting to Temporary-AddBusiness-Requests...');
+      const docRef = await addDoc(collection(db, 'Temporary-AddBusiness-Requests'), businessData);
       const documentId = docRef.id;
       
       console.log('Document created successfully:', documentId);
       
       // Update document with its own ID for reference
-      await updateDoc(doc(db, 'TemporaryBusinessDetails', documentId), {
+      await updateDoc(doc(db, 'Temporary-AddBusiness-Requests', documentId), {
         documentId: documentId
       });
       
@@ -1201,15 +1213,6 @@ const AddBusiness = () => {
 
               {/* Image Upload Section - NOW REQUIRED */}
               <div style={{ marginBottom: '2rem' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '0.7rem',
-                  color: colors.darkNavy,
-                  fontWeight: 'bold',
-                  fontSize: '1rem'
-                }}>
-                  Business Images <span style={{ color: 'red' }}>*</span>
-                </label>
                 <ImageUpload
                   images={images}
                   setImages={setImages}
@@ -1262,6 +1265,7 @@ const AddBusiness = () => {
                   categoriesLoading={categoriesLoading}
                   locationsLoading={locationsLoading}
                   validationErrors={validationErrors}
+                  subtext="You need to use this E-mail for Mobile App login"
                 />
               </div>
 
@@ -1302,6 +1306,7 @@ const AddBusiness = () => {
 
               <FormField
                 label="Location URL"
+                subtext="Your locations' Google Map URL paste here"
                 field="locationUrl"
                 type="url"
                 placeholder="https://maps.google.com/..."

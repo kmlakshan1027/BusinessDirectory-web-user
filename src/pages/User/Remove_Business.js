@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../configs/FirebaseConfigs.js';
 import { colors } from '../../utils/colors.js';
+import AlertNotification from '../../components/AlertNotification.js';
 
 const Remove_Business = () => {
   const navigate = useNavigate();
@@ -19,6 +20,15 @@ const Remove_Business = () => {
   const [businessData, setBusinessData] = useState(null);
   const [loadingBusiness, setLoadingBusiness] = useState(false);
   const [businessNotFound, setBusinessNotFound] = useState(false);
+
+  // Alert state
+  const [alert, setAlert] = useState({
+    isVisible: false,
+    type: 'success',
+    title: '',
+    message: '',
+    duration: 5000
+  });
 
   const removalReasons = [
     {
@@ -63,10 +73,25 @@ const Remove_Business = () => {
     }
   ];
 
+  // Alert functions
+  const showAlert = (type, title, message, duration = 5000) => {
+    setAlert({
+      isVisible: true,
+      type,
+      title,
+      message,
+      duration
+    });
+  };
+
+  const closeAlert = () => {
+    setAlert(prev => ({ ...prev, isVisible: false }));
+  };
+
   // Fetch business data when Business ID changes
   useEffect(() => {
     const fetchBusinessData = async () => {
-      if (!formData.businessId || !isValidBusinessIdFormat(formData.businessId)) {
+      if (!formData.businessId.trim()) {
         setBusinessData(null);
         setBusinessNotFound(false);
         return;
@@ -77,7 +102,7 @@ const Remove_Business = () => {
 
       try {
         const businessCollection = collection(db, 'BusinessList');
-        const q = query(businessCollection, where('business_ID', '==', formData.businessId));
+        const q = query(businessCollection, where('business_ID', '==', formData.businessId.trim()));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
@@ -109,10 +134,9 @@ const Remove_Business = () => {
     const { name, value } = e.target;
     
     if (name === 'businessId') {
-      const upperValue = value.toUpperCase();
       setFormData(prev => ({
         ...prev,
-        [name]: upperValue
+        [name]: value.trim()
       }));
     } else {
       setFormData(prev => ({
@@ -130,19 +154,11 @@ const Remove_Business = () => {
     }
   };
 
-  // Validate Business ID format
-  const isValidBusinessIdFormat = (businessId) => {
-    const regex = /^BIZ-[A-Z0-9]{2}-[A-Z0-9]{4}$/;
-    return regex.test(businessId);
-  };
-
   const validateForm = () => {
     const newErrors = {};
     
     if (!formData.businessId.trim()) {
       newErrors.businessId = 'Business ID is required';
-    } else if (!isValidBusinessIdFormat(formData.businessId)) {
-      newErrors.businessId = 'Business ID must be in format: BIZ-XX-XXXX (e.g., BIZ-01-0001)';
     } else if (businessNotFound) {
       newErrors.businessId = 'Business ID not found in our records';
     }
@@ -161,6 +177,7 @@ const Remove_Business = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      showAlert('warning', 'Validation Error', 'Please correct the errors before submitting.');
       return;
     }
 
@@ -172,8 +189,8 @@ const Remove_Business = () => {
         ? formData.customReason.trim() 
         : removalReasons.find(r => r.value === formData.reason)?.label || formData.reason;
 
-      // Add to RemovalBusinessRequest collection for admin review
-      await addDoc(collection(db, 'RemovalBusinessRequest'), {
+      // Prepare removal request data
+      const removalRequestData = {
         businessId: formData.businessId.trim(),
         businessName: businessData?.name || 'Unknown',
         businessDocId: businessData?.id || null,
@@ -186,9 +203,17 @@ const Remove_Business = () => {
         reviewedBy: null,
         reviewedAt: null,
         removedAt: null
-      });
+      };
 
-      alert('Removal request submitted successfully! Your request will be reviewed by our team.');
+      // Add to Temporary-Remove-Requests collection for admin review
+      await addDoc(collection(db, 'Temporary-Remove-Requests'), removalRequestData);
+
+      showAlert(
+        'success', 
+        'Removal Request Submitted!', 
+        `Your removal request for "${businessData?.name || 'your business'}" has been submitted successfully. Our team will review and process your request soon.`,
+        6000
+      );
       
       // Reset form
       setFormData({
@@ -200,12 +225,14 @@ const Remove_Business = () => {
       setBusinessData(null);
       setBusinessNotFound(false);
       
-      // Navigate back to home
-      navigate('/');
+      // Navigate back to home after 2 seconds
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
       
     } catch (error) {
       console.error('Error submitting removal request:', error);
-      alert('Failed to submit removal request. Please try again.');
+      showAlert('error', 'Submission Failed', `Failed to submit removal request: ${error.message}. Please try again.`, 0);
     } finally {
       setIsSubmitting(false);
     }
@@ -240,7 +267,7 @@ const Remove_Business = () => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  // Business Card Component (same structure as Update_Business.js)
+  // Business Card Component
   const BusinessCard = ({ business }) => (
     <div style={{
       backgroundColor: 'white',
@@ -267,54 +294,72 @@ const Remove_Business = () => {
         {getStatusText(business.status)}
       </div>
 
+      {/* Business Images */}
+      {business.imageUrl && business.imageUrl.length > 0 && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h4 style={{
+            color: colors.darkNavy,
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.8rem'
+          }}>
+            Business Images ({business.imageUrl.length}):
+          </h4>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+            gap: '0.5rem',
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
+            {business.imageUrl.slice(0, 8).map((url, index) => (
+              <div key={index} style={{
+                position: 'relative',
+                aspectRatio: '1',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                border: `1px solid ${colors.lightBlue}`
+              }}>
+                <img
+                  src={url}
+                  alt={`Business image ${index + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+            ))}
+            {business.imageUrl.length > 8 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                aspectRatio: '1',
+                backgroundColor: colors.lightGray,
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                color: colors.darkNavy,
+                fontWeight: 'bold'
+              }}>
+                +{business.imageUrl.length - 8} more
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{
         display: 'grid',
-        gridTemplateColumns: business.imageUrl ? 'auto 1fr' : '1fr',
+        gridTemplateColumns: '1fr',
         gap: '1.5rem',
         marginBottom: '1rem'
       }}>
-        {/* Business Image Section */}
-        {business.imageUrl && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start'
-          }}>
-            <img
-              src={business.imageUrl}
-              alt={business.name || 'Business Image'}
-              style={{
-                width: '150px',
-                height: '110px',
-                objectFit: 'cover',
-                borderRadius: '8px',
-                border: '2px solid #e0e0e0',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
-            />
-            <div style={{
-              display: 'none',
-              backgroundColor: '#f8f9fa',
-              border: '2px dashed #dee2e6',
-              borderRadius: '8px',
-              padding: '1rem',
-              color: colors.mediumGray,
-              fontSize: '0.8rem',
-              width: '120px',
-              height: '90px',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column'
-            }}>
-              <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>📷</div>
-              <div>No Image</div>
-            </div>
-          </div>
-        )}
-
+        
         {/* Main Content Grid */}
         <div style={{
           display: 'grid',
@@ -492,6 +537,17 @@ const Remove_Business = () => {
 
   return (
     <>
+      {/* Alert Notification */}
+      <AlertNotification
+        isVisible={alert.isVisible}
+        onClose={closeAlert}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        duration={alert.duration}
+        position="top-center"
+      />
+
       <style>
         {`
           @keyframes spin {
@@ -554,7 +610,7 @@ const Remove_Business = () => {
               fontWeight: 'bold',
               margin: 0
             }}>
-              🗑️ Remove Your Business
+              Remove Your Business
             </h1>
           </div>
 
@@ -599,7 +655,7 @@ const Remove_Business = () => {
               lineHeight: '1.6',
               fontSize: '1.1rem'
             }}>
-              Please provide your business ID and select the reason for removal. Our team will review your request and process the removal accordingly.
+              Please provide your Business ID and select a reason for removal. You can find your Business ID in the 'My Businesses' section of the mobile app.
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -619,17 +675,15 @@ const Remove_Business = () => {
                   name="businessId"
                   value={formData.businessId}
                   onChange={handleInputChange}
-                  placeholder="BIZ-XX-XXXX (e.g., BIZ-01-0001)"
+                  placeholder="Enter your business ID"
                   style={{
                     width: '100%',
                     padding: '1rem',
-                    border: `2px solid ${errors.businessId ? '#ff4444' : businessData ? '#00cc44' : isValidBusinessIdFormat(formData.businessId) ? (loadingBusiness ? '#ffc107' : '#00cc44') : colors.lightBlue}`,
+                    border: `2px solid ${errors.businessId ? '#ff4444' : businessData ? '#00cc44' : (loadingBusiness ? '#ffc107' : colors.lightBlue)}`,
                     borderRadius: '8px',
                     fontSize: '1rem',
                     fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
+                    boxSizing: 'border-box'
                   }}
                 />
                 <div style={{
@@ -642,11 +696,11 @@ const Remove_Business = () => {
                     color: colors.mediumBlue,
                     fontSize: '0.8rem'
                   }}>
-                    Format: BIZ-XX-XXXX
+                    Enter your business ID to find your business
                   </small>
                   {formData.businessId && (
                     <div style={{
-                      color: businessData ? '#00cc44' : businessNotFound ? '#ff4444' : isValidBusinessIdFormat(formData.businessId) ? (loadingBusiness ? '#ffc107' : '#00cc44') : '#ff6600',
+                      color: businessData ? '#00cc44' : businessNotFound ? '#ff4444' : (loadingBusiness ? '#ffc107' : colors.mediumBlue),
                       fontSize: '0.8rem',
                       fontWeight: '500',
                       display: 'flex',
@@ -663,16 +717,14 @@ const Remove_Business = () => {
                             borderRadius: '50%',
                             animation: 'spin 1s linear infinite'
                           }}></div>
-                          Checking...
+                          Searching...
                         </>
                       ) : businessData ? (
                         '✓ Business Found'
                       ) : businessNotFound ? (
                         '✗ Not Found'
-                      ) : isValidBusinessIdFormat(formData.businessId) ? (
-                        '✓ Valid Format'
                       ) : (
-                        '⚠ Invalid Format'
+                        'Enter ID to search'
                       )}
                     </div>
                   )}
