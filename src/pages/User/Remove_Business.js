@@ -963,7 +963,7 @@ const Remove_Business = () => {
                     </>
                   ) : (
                     <>
-                      🗑️ Submit Removal Request
+                      Submit Removal Request
                     </>
                   )}
                 </button>
