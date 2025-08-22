@@ -1086,7 +1086,7 @@ const AddBusiness = () => {
               fontSize: '1.1rem',
               lineHeight: '1.6'
             }}>
-              Submit your business information for review. All fields marked with * are required.
+              Submit your Business Information for Review. All fields marked with * are required.
             </p>
             
             <form onSubmit={handleSubmit}>
