@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../configs/FirebaseConfigs';
+import ShopNexLogo from '../../assets/images/ShopNex-2-TransP.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -94,7 +95,6 @@ const Login = () => {
           .login-title {
             font-size: 2.2rem;
             font-weight: 700;
-            margin-bottom: 1.5rem;
             background: linear-gradient(135deg, ${themeColors.primary} 0%, ${themeColors.secondary} 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -181,6 +181,16 @@ const Login = () => {
       </style>
       <div className="login-container">
         <div className="login-card">
+          <img 
+            src={ShopNexLogo} 
+            alt="ShopNex Logo" 
+            style={{ 
+              maxWidth: '150px', 
+              marginBottom: '1.5rem', 
+              display: 'block', 
+              margin: '0 auto 1.5rem auto' 
+            }} 
+          />
           <h1 className="login-title">Welcome</h1>
           <p className="login-subtitle">Please sign in to your account</p>
           
