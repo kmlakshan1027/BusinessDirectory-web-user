@@ -1,18 +1,53 @@
-// pages/Update_Business.js
+// pages/Update_Business.js - Enhanced with Products Section
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../configs/FirebaseConfigs.js';
 import { colors } from '../../utils/colors.js';
 import ImageUpload, { uploadBusinessImages } from '../../components/ImageUpload.js';
+import ProductsUpdateSection from '../../components/ProductsUpdateSection.js';
 import AlertNotification from '../../components/AlertNotification.js';
+import { Building2, Search, Edit3, CheckCircle, XCircle, Loader } from 'lucide-react';
+
+const FormField = ({ label, children, error, required = true }) => (
+  <div style={{ marginBottom: '1.5rem' }}>
+    <label style={{
+      display: 'block',
+      marginBottom: '0.5rem',
+      color: colors.darkNavy,
+      fontWeight: '600',
+      fontSize: '1rem'
+    }}>
+      {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
+    </label>
+    {children}
+    {error && (
+      <div style={{
+        color: '#ef4444',
+        fontSize: '0.85rem',
+        marginTop: '0.3rem'
+      }}>
+        {error}
+      </div>
+    )}
+  </div>
+);
+
+const inputStyle = (hasError) => ({
+  width: '100%',
+  padding: '0.875rem',
+  border: `2px solid ${hasError ? '#ef4444' : '#e5e7eb'}`,
+  borderRadius: '8px',
+  fontSize: '1rem',
+  boxSizing: 'border-box',
+  fontFamily: 'inherit'
+});
 
 const Update_Business = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     businessId: '',
     fieldToUpdate: '',
-    // Dynamic form fields
     newBusinessName: '',
     newAbout: '',
     newAddress: '',
@@ -27,8 +62,9 @@ const Update_Business = () => {
     newLocation: '',
     customLocation: '',
     newDistrict: '',
-    otherDescription: '', // New field for 'Other' option
-    alwaysOpen: false,
+    newServices: '',
+    otherDescription: '',
+    Always_Open: false,
     operatingHours: {
       sunday: { isOpen: false, openTime: '', closeTime: '' },
       monday: { isOpen: false, openTime: '', closeTime: '' },
@@ -46,18 +82,17 @@ const Update_Business = () => {
   const [loadingBusiness, setLoadingBusiness] = useState(false);
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [timeErrors, setTimeErrors] = useState({});
-  
-  // Image state for Business Image updates
   const [images, setImages] = useState([]);
-  
-  // Data fetching states
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [locationsLoading, setLocationsLoading] = useState(false);
+  
+  // Products state
+  const [products, setProducts] = useState([]);
+  const [productsValidationError, setProductsValidationError] = useState('');
 
-  // Alert state
   const [alert, setAlert] = useState({
     isVisible: false,
     type: 'success',
@@ -80,7 +115,9 @@ const Update_Business = () => {
     'Website',
     'Location URL',
     'Operating Hours',
-    'Business Images', // New option
+    'Services',
+    'Business Images',
+    'Products',
     'Other'
   ];
 
@@ -94,7 +131,6 @@ const Update_Business = () => {
     { key: 'saturday', label: 'Saturday' }
   ];
 
-  // Alert functions
   const showAlert = (type, title, message, duration = 5000) => {
     setAlert({
       isVisible: true,
@@ -109,7 +145,13 @@ const Update_Business = () => {
     setAlert(prev => ({ ...prev, isVisible: false }));
   };
 
-  // Fetch categories from Firestore
+  // Handle products change
+  const handleProductsChange = (updatedProducts) => {
+    setProducts(updatedProducts);
+    setProductsValidationError('');
+  };
+
+  // ALL ORIGINAL FIREBASE FUNCTIONS - PRESERVED
   useEffect(() => {
     const fetchCategories = async () => {
       if (formData.fieldToUpdate === 'Category') {
@@ -130,11 +172,9 @@ const Update_Business = () => {
         }
       }
     };
-
     fetchCategories();
   }, [formData.fieldToUpdate]);
 
-  // Fetch locations and districts from Firestore
   useEffect(() => {
     const fetchLocationsAndDistricts = async () => {
       if (formData.fieldToUpdate === 'Location' || formData.fieldToUpdate === 'District') {
@@ -147,10 +187,7 @@ const Update_Business = () => {
           const allDistricts = new Set();
           
           locationsSnapshot.docs.forEach(doc => {
-            // District names are document IDs
             allDistricts.add(doc.id);
-            
-            // Location names are in the document data
             const data = doc.data();
             Object.keys(data).forEach(key => {
               if (key.startsWith('name') && data[key]) {
@@ -169,11 +206,9 @@ const Update_Business = () => {
         }
       }
     };
-
     fetchLocationsAndDistricts();
   }, [formData.fieldToUpdate]);
 
-  // Fetch business data when Business ID changes
   useEffect(() => {
     const fetchBusinessData = async () => {
       if (!formData.businessId.trim()) {
@@ -199,19 +234,20 @@ const Update_Business = () => {
           setBusinessData(data);
           setBusinessNotFound(false);
           
-          // Pre-populate operating hours if updating operating hours
-          if (formData.fieldToUpdate === 'Operating Hours' && data.operatingTimes) {
+          if (formData.fieldToUpdate === 'Operating Hours') {
+            const existingTimes = data.Operating_Times || {};
+            const defaultDay = { isOpen: false, openTime: '', closeTime: '' };
             setFormData(prev => ({
               ...prev,
-              alwaysOpen: data.alwaysOpen || false,
+              Always_Open: data.Always_Open || false,
               operatingHours: {
-                sunday: data.operatingTimes.sunday || { isOpen: false, openTime: '', closeTime: '' },
-                monday: data.operatingTimes.monday || { isOpen: false, openTime: '', closeTime: '' },
-                tuesday: data.operatingTimes.tuesday || { isOpen: false, openTime: '', closeTime: '' },
-                wednesday: data.operatingTimes.wednesday || { isOpen: false, openTime: '', closeTime: '' },
-                thursday: data.operatingTimes.thursday || { isOpen: false, openTime: '', closeTime: '' },
-                friday: data.operatingTimes.friday || { isOpen: false, openTime: '', closeTime: '' },
-                saturday: data.operatingTimes.saturday || { isOpen: false, openTime: '', closeTime: '' }
+                sunday: { ...defaultDay, ...existingTimes.sunday },
+                monday: { ...defaultDay, ...existingTimes.monday },
+                tuesday: { ...defaultDay, ...existingTimes.tuesday },
+                wednesday: { ...defaultDay, ...existingTimes.wednesday },
+                thursday: { ...defaultDay, ...existingTimes.thursday },
+                friday: { ...defaultDay, ...existingTimes.friday },
+                saturday: { ...defaultDay, ...existingTimes.saturday }
               }
             }));
           }
@@ -241,7 +277,6 @@ const Update_Business = () => {
         [name]: value.trim()
       }));
     } else if (name === 'newContact' || name === 'newWhatsApp') {
-      // Handle phone numbers - only allow 9 digits
       const numericValue = value.replace(/\D/g, '');
       if (numericValue.length <= 9) {
         setFormData(prev => ({
@@ -250,7 +285,6 @@ const Update_Business = () => {
         }));
       }
     } else if (name === 'newEmail') {
-      // Email validation - only allow simple letters, numbers, @ and .
       const emailValue = value.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase();
       setFormData(prev => ({
         ...prev,
@@ -263,7 +297,6 @@ const Update_Business = () => {
       }));
     }
     
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -272,11 +305,10 @@ const Update_Business = () => {
     }
   };
 
-  // Operating hours handlers
   const handleAlwaysOpenToggle = () => {
     setFormData(prev => ({
       ...prev,
-      alwaysOpen: !prev.alwaysOpen
+      Always_Open: !prev.Always_Open
     }));
     setTimeErrors({});
   };
@@ -320,7 +352,7 @@ const Update_Business = () => {
   };
 
   const validateTimes = () => {
-    if (formData.alwaysOpen) {
+    if (formData.Always_Open) {
       return true;
     }
 
@@ -359,6 +391,30 @@ const Update_Business = () => {
     return !hasErrors;
   };
 
+  const validateProducts = () => {
+    if (products.length === 0) {
+      setProductsValidationError('Please add at least one product');
+      return false;
+    }
+
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      
+      if (!product.name || !product.name.trim()) {
+        setProductsValidationError(`Product ${i + 1}: Name is required`);
+        return false;
+      }
+      
+      if (!product.itemCode || !product.itemCode.trim()) {
+        setProductsValidationError(`Product ${i + 1}: Item Code is required`);
+        return false;
+      }
+    }
+
+    setProductsValidationError('');
+    return true;
+  };
+
   const validateForm = () => {
     const newErrors = {};
     
@@ -372,7 +428,6 @@ const Update_Business = () => {
       newErrors.fieldToUpdate = 'Please select a field to update';
     }
 
-    // Validate specific fields based on fieldToUpdate
     if (formData.fieldToUpdate) {
       switch (formData.fieldToUpdate) {
         case 'Business Name':
@@ -486,11 +541,19 @@ const Update_Business = () => {
           break;
 
         case 'Operating Hours':
-          if (!formData.alwaysOpen) {
+          if (!formData.Always_Open) {
             const hasOpenDay = Object.values(formData.operatingHours).some(day => day.isOpen);
             if (!hasOpenDay) {
               newErrors.operatingHours = 'Please select at least one operating day or choose "Always Open"';
             }
+          }
+          break;
+
+        case 'Services':
+          if (!formData.newServices.trim()) {
+            newErrors.newServices = 'New services information is required';
+          } else if (formData.newServices.trim().length < 10) {
+            newErrors.newServices = 'Services description must be at least 10 characters';
           }
           break;
 
@@ -499,6 +562,12 @@ const Update_Business = () => {
             newErrors.images = 'New business images are required. Please upload at least one image.';
           } else if (images.length > 5) {
             newErrors.images = 'Maximum 5 images allowed';
+          }
+          break;
+
+        case 'Products':
+          if (!validateProducts()) {
+            newErrors.products = 'Please ensure all products have required information';
           }
           break;
 
@@ -520,6 +589,7 @@ const Update_Business = () => {
     return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
   };
 
+  // ORIGINAL SUBMIT HANDLER - ENHANCED FOR PRODUCTS
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -528,7 +598,6 @@ const Update_Business = () => {
       return;
     }
 
-    // Validate operating hours if updating operating hours
     if (formData.fieldToUpdate === 'Operating Hours' && !validateTimes()) {
       showAlert('warning', 'Time Validation Error', 'Please correct the operating hours before submitting.');
       return;
@@ -540,19 +609,14 @@ const Update_Business = () => {
       let newValue = '';
       let imageUrls = [];
       
-      // Handle image upload for Business Images
       if (formData.fieldToUpdate === 'Business Images' && images && images.length > 0) {
         try {
           console.log('Uploading', images.length, 'images for business update...');
           
-          // Generate unique update ID for image storage
           const updateId = `update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          
-          // Upload images to Firebase Storage
           const uploadedImageData = await uploadBusinessImages(images, updateId);
           console.log('Upload result:', uploadedImageData);
           
-          // Validate and extract download URLs
           if (uploadedImageData && Array.isArray(uploadedImageData)) {
             imageUrls = uploadedImageData
               .map(img => img?.downloadURL)
@@ -575,7 +639,6 @@ const Update_Business = () => {
         }
       }
       
-      // Prepare the new value based on field type
       switch (formData.fieldToUpdate) {
         case 'Business Name':
           newValue = formData.newBusinessName.trim();
@@ -618,12 +681,28 @@ const Update_Business = () => {
           break;
         case 'Operating Hours':
           newValue = JSON.stringify({
-            alwaysOpen: formData.alwaysOpen,
-            operatingTimes: formData.alwaysOpen ? null : formData.operatingHours
+            Always_Open: formData.Always_Open,
+            Operating_Times: formData.Always_Open ? null : formData.operatingHours
           });
+          break;
+        case 'Services':
+          newValue = formData.newServices.trim();
           break;
         case 'Business Images':
           newValue = JSON.stringify(imageUrls);
+          break;
+        case 'Products':
+          // Clean products data - only include necessary fields
+          const cleanedProducts = products.map(product => ({
+            name: product.name.trim(),
+            itemCode: product.itemCode.trim(),
+            discount: product.discount ? product.discount.toString() : '',
+            oldPrice: product.oldPrice ? product.oldPrice.toString() : '',
+            newPrice: product.newPrice ? product.newPrice.toString() : '',
+            imageUrl: product.imageUrl || '',
+            inStock: product.inStock !== undefined ? product.inStock : true
+          }));
+          newValue = JSON.stringify(cleanedProducts);
           break;
         case 'Other':
           newValue = formData.otherDescription.trim();
@@ -632,7 +711,6 @@ const Update_Business = () => {
           newValue = 'See description for details';
       }
 
-      // Prepare update request data
       const updateRequestData = {
         businessId: formData.businessId.trim(),
         businessName: businessData?.name || 'Unknown',
@@ -643,27 +721,31 @@ const Update_Business = () => {
         status: 'pending_review',
         reviewedBy: null,
         reviewedAt: null,
-        // Add image URLs if updating business images
         ...(formData.fieldToUpdate === 'Business Images' && { 
           newImageUrls: imageUrls,
           imageCount: imageUrls.length 
         }),
-        // Add other description if applicable
+        ...(formData.fieldToUpdate === 'Products' && {
+          productsData: products,
+          productCount: products.length
+        }),
         ...(formData.fieldToUpdate === 'Other' && { 
           description: formData.otherDescription.trim() 
         })
       };
 
-      // Add to Temporary-Update-Requests collection for review
       await addDoc(collection(db, 'Temporary-Update-Requests'), updateRequestData);
 
       const imageCountText = formData.fieldToUpdate === 'Business Images' ? 
         ` with ${imageUrls.length} image${imageUrls.length > 1 ? 's' : ''}` : '';
       
+      const productCountText = formData.fieldToUpdate === 'Products' ?
+        ` with ${products.length} product${products.length > 1 ? 's' : ''}` : '';
+      
       showAlert(
         'success', 
         'Update Request Submitted!', 
-        `Your update request for "${businessData?.name || 'your business'}" has been submitted successfully${imageCountText}. Our team will review and process your request soon.`,
+        `Your update request for "${businessData?.name || 'your business'}" has been submitted successfully${imageCountText}${productCountText}. Our team will review and process your request soon.`,
         6000
       );
       
@@ -685,8 +767,9 @@ const Update_Business = () => {
         newLocation: '',
         customLocation: '',
         newDistrict: '',
+        newServices: '',
         otherDescription: '',
-        alwaysOpen: false,
+        Always_Open: false,
         operatingHours: {
           sunday: { isOpen: false, openTime: '', closeTime: '' },
           monday: { isOpen: false, openTime: '', closeTime: '' },
@@ -698,11 +781,12 @@ const Update_Business = () => {
         }
       });
       setImages([]);
+      setProducts([]);
+      setProductsValidationError('');
       setBusinessData(null);
       setBusinessNotFound(false);
       setTimeErrors({});
       
-      // Navigate back to home after 2 seconds
       setTimeout(() => {
         navigate('/');
       }, 2000);
@@ -732,103 +816,84 @@ const Update_Business = () => {
       case 'Website': return businessData.website || 'N/A';
       case 'Location URL': return businessData.locationUrl || 'N/A';
       case 'Operating Hours': return JSON.stringify({
-        alwaysOpen: businessData.alwaysOpen || false,
-        operatingTimes: businessData.operatingTimes || null
+        Always_Open: businessData.Always_Open || false,
+        Operating_Times: businessData.Operating_Times || null
       });
+      case 'Services': return businessData.Services || 'N/A';
       case 'Business Images': return `Current images: ${businessData.imageUrl?.length || 0} image(s)`;
+      case 'Products': return `Current products: ${businessData.products?.length || 0} product(s)`;
       case 'Other': return 'N/A - See description';
       default: return 'N/A';
     }
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-    } catch (err) {
-      console.warn('Error formatting date:', err);
-      return 'Invalid Date';
+  const getDisplayValue = () => {
+    if (!businessData) return 'N/A';
+
+    if (formData.fieldToUpdate === 'Operating Hours') {
+      if (businessData.Always_Open) {
+        return 'Always Open (24/7)';
+      }
+      if (!businessData.Operating_Times) {
+        return 'Operating hours not specified.';
+      }
+
+      const formatTime = (time) => {
+        if (!time) return 'N/A';
+        const [hour, minute] = time.split(':');
+        const h = parseInt(hour, 10);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${minute} ${ampm}`;
+      };
+
+      const lines = daysOfWeek
+        .map(({ key, label }) => {
+            const dayData = businessData.Operating_Times[key];
+            if (dayData && dayData.isOpen) {
+                return `${label}: ${formatTime(dayData.openTime)} - ${formatTime(dayData.closeTime)}`;
+            }
+            return `${label}: Closed`;
+        });
+
+      return lines.join('\n');
     }
-  };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'approved':
-        return '#28a745';
-      case 'pending':
-        return '#ffc107';
-      case 'rejected':
-        return '#dc3545';
-      default:
-        return colors.mediumGray;
+    if (formData.fieldToUpdate === 'Services') {
+      return businessData.Services || 'No services information available';
     }
+
+    if (formData.fieldToUpdate === 'Products') {
+      const productCount = businessData.products?.length || 0;
+      if (productCount === 0) return 'No products added yet';
+      return `${productCount} product${productCount > 1 ? 's' : ''} currently listed`;
+    }
+
+    return getCurrentValue();
   };
 
-  const getStatusText = (status) => {
-    if (!status) return 'Unknown';
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
-  // Dynamic form field renderer
+  // ENHANCED UI RENDER FUNCTIONS
   const renderDynamicField = () => {
-    if (!formData.fieldToUpdate) {
-      return null;
-    }
+    if (!formData.fieldToUpdate) return null;
 
     switch (formData.fieldToUpdate) {
       case 'Business Name':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New Business Name <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label="New Business Name" error={errors.newBusinessName}>
             <input
               type="text"
               name="newBusinessName"
               value={formData.newBusinessName}
               onChange={handleInputChange}
               placeholder="Enter new business name"
-              style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors.newBusinessName ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                boxSizing: 'border-box'
-              }}
+              style={inputStyle(errors.newBusinessName)}
             />
-            {errors.newBusinessName && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.newBusinessName}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       case 'About/Description':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New Description <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label="New Description" error={errors.newAbout}>
             <textarea
               name="newAbout"
               value={formData.newAbout}
@@ -836,59 +901,25 @@ const Update_Business = () => {
               placeholder="Enter new business description"
               rows={6}
               style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors.newAbout ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                boxSizing: 'border-box'
+                ...inputStyle(errors.newAbout),
+                resize: 'vertical'
               }}
             />
             <div style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              justifyContent: 'flex-end',
+              fontSize: '0.85rem',
+              color: getWordCount(formData.newAbout) > 180 ? '#f59e0b' : colors.mediumBlue,
               marginTop: '0.3rem'
             }}>
-              <small style={{ 
-                color: colors.mediumBlue, 
-                fontSize: '0.8rem'
-              }}>
-                Maximum 200 words
-              </small>
-              <div style={{
-                fontSize: '0.8rem',
-                color: getWordCount(formData.newAbout) > 180 ? '#ff6600' : colors.mediumBlue
-              }}>
-                {getWordCount(formData.newAbout)}/200 words
-              </div>
+              {getWordCount(formData.newAbout)}/200 words
             </div>
-            {errors.newAbout && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.newAbout}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       case 'Address':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New Address <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label="New Address" error={errors.newAddress}>
             <textarea
               name="newAddress"
               value={formData.newAddress}
@@ -896,50 +927,27 @@ const Update_Business = () => {
               placeholder="Enter new business address"
               rows={3}
               style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors.newAddress ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                boxSizing: 'border-box'
+                ...inputStyle(errors.newAddress),
+                resize: 'vertical'
               }}
             />
-            {errors.newAddress && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.newAddress}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       case 'Contact Number':
       case 'WhatsApp Number':
         const fieldName = formData.fieldToUpdate === 'Contact Number' ? 'newContact' : 'newWhatsApp';
-        const errorField = formData.fieldToUpdate === 'Contact Number' ? 'newContact' : 'newWhatsApp';
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New {formData.fieldToUpdate} <span style={{ color: 'red' }}>*</span>
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+          <FormField label={`New ${formData.fieldToUpdate}`} error={errors[fieldName]}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               <span style={{
-                color: colors.darkNavy,
-                fontWeight: '500',
-                fontSize: '1rem',
-                whiteSpace: 'nowrap',
-                marginRight: '0.5rem'
+                padding: '0.875rem',
+                backgroundColor: '#f3f4f6',
+                border: '2px solid #e5e7eb',
+                borderRight: 'none',
+                borderRadius: '8px 0 0 8px',
+                fontWeight: '600',
+                color: colors.darkNavy
               }}>
                 +94
               </span>
@@ -952,9 +960,10 @@ const Update_Business = () => {
                 maxLength="9"
                 style={{
                   flex: 1,
-                  padding: '1rem',
-                  border: `2px solid ${errors[errorField] ? '#ff4444' : colors.lightBlue}`,
-                  borderRadius: '8px',
+                  padding: '0.875rem',
+                  border: `2px solid ${errors[fieldName] ? '#ef4444' : '#e5e7eb'}`,
+                  borderLeft: 'none',
+                  borderRadius: '0 8px 8px 0',
                   fontSize: '1rem',
                   boxSizing: 'border-box',
                   fontFamily: 'inherit'
@@ -963,89 +972,40 @@ const Update_Business = () => {
               <div style={{
                 fontSize: '0.8rem',
                 color: colors.mediumBlue,
-                marginLeft: '0.5rem'
+                marginLeft: '0.5rem',
+                whiteSpace: 'nowrap'
               }}>
-                {formData[fieldName].length}/9 digits
+                {formData[fieldName].length}/9
               </div>
             </div>
-            {errors[errorField] && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors[errorField]}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       case 'Email':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New Email <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label="New Email" error={errors.newEmail}>
             <input
               type="email"
               name="newEmail"
               value={formData.newEmail}
               onChange={handleInputChange}
               placeholder="business@example.com"
-              style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors.newEmail ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                boxSizing: 'border-box'
-              }}
+              style={inputStyle(errors.newEmail)}
             />
-            {errors.newEmail && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.newEmail}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       case 'Category':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New Category <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label="New Category" error={errors.newCategory}>
             <select
               name="newCategory"
               value={formData.newCategory}
               onChange={handleInputChange}
               disabled={categoriesLoading}
               style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors.newCategory ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
+                ...inputStyle(errors.newCategory),
                 backgroundColor: categoriesLoading ? '#f0f0f0' : 'white',
-                boxSizing: 'border-box',
                 cursor: categoriesLoading ? 'not-allowed' : 'pointer'
               }}
             >
@@ -1068,72 +1028,41 @@ const Update_Business = () => {
                 onChange={handleInputChange}
                 placeholder="Please specify your business category"
                 style={{
-                  width: '100%',
-                  padding: '1rem',
-                  border: `2px solid ${errors.customCategory ? '#ff4444' : colors.lightBlue}`,
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit',
+                  ...inputStyle(errors.customCategory),
                   marginTop: '0.5rem'
                 }}
               />
             )}
-            
-            {errors.newCategory && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.newCategory}
-              </div>
-            )}
             {errors.customCategory && (
               <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
+                color: '#ef4444',
+                fontSize: '0.85rem',
                 marginTop: '0.3rem'
               }}>
                 {errors.customCategory}
               </div>
             )}
-          </div>
+          </FormField>
         );
 
       case 'Location':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <div className="form-grid" style={{
+          <div>
+            <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '1.5rem',
-              marginBottom: '1rem'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '1rem',
+              marginBottom: '1.5rem'
             }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '0.7rem',
-                  color: colors.darkNavy,
-                  fontWeight: 'bold',
-                  fontSize: '1rem'
-                }}>
-                  New Location <span style={{ color: 'red' }}>*</span>
-                </label>
+              <FormField label="New Location" error={errors.newLocation}>
                 <select
                   name="newLocation"
                   value={formData.newLocation}
                   onChange={handleInputChange}
                   disabled={locationsLoading}
                   style={{
-                    width: '100%',
-                    padding: '1rem',
-                    border: `2px solid ${errors.newLocation ? '#ff4444' : colors.lightBlue}`,
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
+                    ...inputStyle(errors.newLocation),
                     backgroundColor: locationsLoading ? '#f0f0f0' : 'white',
-                    boxSizing: 'border-box',
                     cursor: locationsLoading ? 'not-allowed' : 'pointer'
                   }}
                 >
@@ -1156,61 +1085,29 @@ const Update_Business = () => {
                     onChange={handleInputChange}
                     placeholder="Please specify your business location"
                     style={{
-                      width: '100%',
-                      padding: '1rem',
-                      border: `2px solid ${errors.customLocation ? '#ff4444' : colors.lightBlue}`,
-                      borderRadius: '8px',
-                      fontSize: '1rem',
-                      boxSizing: 'border-box',
-                      fontFamily: 'inherit',
+                      ...inputStyle(errors.customLocation),
                       marginTop: '0.5rem'
                     }}
                   />
                 )}
-                
-                {errors.newLocation && (
-                  <div style={{
-                    color: '#ff4444',
-                    fontSize: '0.8rem',
-                    marginTop: '0.3rem'
-                  }}>
-                    {errors.newLocation}
-                  </div>
-                )}
                 {errors.customLocation && (
                   <div style={{
-                    color: '#ff4444',
-                    fontSize: '0.8rem',
+                    color: '#ef4444',
+                    fontSize: '0.85rem',
                     marginTop: '0.3rem'
                   }}>
                     {errors.customLocation}
                   </div>
                 )}
-              </div>
+              </FormField>
 
-              <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '0.7rem',
-                  color: colors.darkNavy,
-                  fontWeight: 'bold',
-                  fontSize: '1rem'
-                }}>
-                  New District <span style={{ color: 'red' }}>*</span>
-                </label>
+              <FormField label="New District" error={errors.newDistrict}>
                 <select
                   name="newDistrict"
                   value={formData.newDistrict}
                   onChange={handleInputChange}
                   style={{
-                    width: '100%',
-                    padding: '1rem',
-                    border: `2px solid ${errors.newDistrict ? '#ff4444' : colors.lightBlue}`,
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
-                    backgroundColor: 'white',
-                    boxSizing: 'border-box',
+                    ...inputStyle(errors.newDistrict),
                     cursor: 'pointer'
                   }}
                 >
@@ -1221,46 +1118,20 @@ const Update_Business = () => {
                     </option>
                   ))}
                 </select>
-                
-                {errors.newDistrict && (
-                  <div style={{
-                    color: '#ff4444',
-                    fontSize: '0.8rem',
-                    marginTop: '0.3rem'
-                  }}>
-                    {errors.newDistrict}
-                  </div>
-                )}
-              </div>
+              </FormField>
             </div>
           </div>
         );
 
       case 'District':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New District <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label="New District" error={errors.newDistrict}>
             <select
               name="newDistrict"
               value={formData.newDistrict}
               onChange={handleInputChange}
               style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors.newDistrict ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                backgroundColor: 'white',
-                boxSizing: 'border-box',
+                ...inputStyle(errors.newDistrict),
                 cursor: 'pointer'
               }}
             >
@@ -1271,17 +1142,7 @@ const Update_Business = () => {
                 </option>
               ))}
             </select>
-            
-            {errors.newDistrict && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.newDistrict}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       case 'Facebook Page':
@@ -1289,201 +1150,169 @@ const Update_Business = () => {
       case 'Location URL':
         const urlFieldName = formData.fieldToUpdate === 'Facebook Page' ? 'newFacebook' : 
                             formData.fieldToUpdate === 'Website' ? 'newWebsite' : 'newLocationUrl';
-        const urlErrorField = formData.fieldToUpdate === 'Facebook Page' ? 'newFacebook' : 
-                             formData.fieldToUpdate === 'Website' ? 'newWebsite' : 'newLocationUrl';
         const placeholder = formData.fieldToUpdate === 'Facebook Page' ? 'https://facebook.com/your-page' :
                            formData.fieldToUpdate === 'Website' ? 'https://your-website.com' :
                            'https://maps.google.com/...';
         
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              New {formData.fieldToUpdate} <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label={`New ${formData.fieldToUpdate}`} error={errors[urlFieldName]}>
             <input
               type="url"
               name={urlFieldName}
               value={formData[urlFieldName]}
               onChange={handleInputChange}
               placeholder={placeholder}
-              style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors[urlErrorField] ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                boxSizing: 'border-box'
-              }}
+              style={inputStyle(errors[urlFieldName])}
             />
-            {errors[urlErrorField] && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors[urlErrorField]}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       case 'Operating Hours':
         return (
           <div style={{ marginBottom: '2rem' }}>
             <h3 style={{
-              color: colors.darkNavy,
-              marginBottom: '1.5rem',
               fontSize: '1.3rem',
-              fontWeight: 'bold'
+              fontWeight: '700',
+              color: colors.darkNavy,
+              marginBottom: '1.5rem'
             }}>
-              New Operating Hours <span style={{ color: 'red' }}>*</span>
+              New Operating Hours
             </h3>
             
-            {/* Always Open Option */}
             <div style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              border: `2px solid ${formData.alwaysOpen ? colors.mediumBlue : colors.lightBlue}`,
-              borderRadius: '8px',
-              backgroundColor: formData.alwaysOpen ? '#e8f4ff' : '#f8f9ff'
+              marginBottom: '2rem',
+              padding: '1.5rem',
+              backgroundColor: formData.Always_Open ? '#ecfdf5' : '#f3f4f6',
+              border: `2px solid ${formData.Always_Open ? '#3183B5' : '#e5e7eb'}`,
+              borderRadius: '12px'
             }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
                 cursor: 'pointer',
-                fontSize: '1.1rem',
                 fontWeight: '600',
+                fontSize: '1.1rem',
                 color: colors.darkNavy
               }}>
                 <input
                   type="checkbox"
-                  checked={formData.alwaysOpen}
+                  checked={formData.Always_Open}
                   onChange={handleAlwaysOpenToggle}
                   style={{
-                    marginRight: '0.7rem',
-                    transform: 'scale(1.3)'
+                    width: '20px',
+                    height: '20px',
+                    marginRight: '1rem',
+                    cursor: 'pointer'
                   }}
                 />
                 Always Open (24/7)
               </label>
               <p style={{
-                margin: '0.5rem 0 0 0',
+                marginTop: '0.5rem',
+                marginLeft: '2.25rem',
                 fontSize: '0.9rem',
-                color: colors.mediumBlue,
-                fontStyle: 'italic'
+                color: '#6b7280'
               }}>
                 Check this if your business operates 24 hours a day, 7 days a week
               </p>
             </div>
 
-            {/* Day-wise Schedule */}
-            <div style={{
-              opacity: formData.alwaysOpen ? 0.5 : 1,
-              pointerEvents: formData.alwaysOpen ? 'none' : 'auto',
-              transition: 'opacity 0.3s ease'
-            }}>
-              <div style={{
-                display: 'grid',
-                gap: '1rem'
-              }}>
+            {!formData.Always_Open && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
                 {daysOfWeek.map(({ key, label }) => (
                   <div key={key} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '120px 1fr 1fr',
-                    gap: '1rem',
-                    alignItems: 'center',
                     padding: '1rem',
-                    border: `1px solid ${colors.lightBlue}`,
-                    borderRadius: '8px',
-                    backgroundColor: formData.operatingHours[key].isOpen ? '#f8f9ff' : '#f5f5f5'
+                    backgroundColor: formData.operatingHours[key].isOpen ? '#f0fdf4' : '#f3f4f6',
+                    border: `2px solid ${formData.operatingHours[key].isOpen ? '#3183B5' : '#e5e7eb'}`,
+                    borderRadius: '12px',
+                    transition: 'all 0.2s'
                   }}>
-                    <label style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '500'
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '140px 1fr 1fr',
+                      gap: '1rem',
+                      alignItems: 'center'
                     }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.operatingHours[key].isOpen}
-                        onChange={() => handleDayToggle(key)}
-                        disabled={formData.alwaysOpen}
-                        style={{
-                          marginRight: '0.5rem',
-                          transform: 'scale(1.2)'
-                        }}
-                      />
-                      {label}
-                    </label>
-                    
-                    <div>
                       <label style={{
-                        display: 'block',
-                        marginBottom: '0.3rem',
-                        fontSize: '0.9rem',
-                        color: colors.darkNavy,
-                        fontWeight: '500'
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        color: colors.darkNavy
                       }}>
-                        Open Time
+                        <input
+                          type="checkbox"
+                          checked={formData.operatingHours[key].isOpen}
+                          onChange={() => handleDayToggle(key)}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            marginRight: '0.75rem',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        {label}
                       </label>
-                      <input
-                        type="time"
-                        value={formData.operatingHours[key].openTime}
-                        onChange={(e) => handleTimeChange(key, 'openTime', e.target.value)}
-                        disabled={!formData.operatingHours[key].isOpen || formData.alwaysOpen}
-                        style={{
-                          width: '100%',
-                          padding: '0.7rem',
-                          border: `1px solid ${colors.lightBlue}`,
-                          borderRadius: '6px',
-                          fontSize: '0.95rem',
-                          backgroundColor: (formData.operatingHours[key].isOpen && !formData.alwaysOpen) ? 'white' : '#f0f0f0',
-                          cursor: (formData.operatingHours[key].isOpen && !formData.alwaysOpen) ? 'pointer' : 'not-allowed'
-                        }}
-                      />
+
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '0.85rem',
+                          fontWeight: '600',
+                          marginBottom: '0.25rem',
+                          color: '#6b7280'
+                        }}>
+                          Opens
+                        </label>
+                        <input
+                          type="time"
+                          value={formData.operatingHours[key].openTime}
+                          onChange={(e) => handleTimeChange(key, 'openTime', e.target.value)}
+                          disabled={!formData.operatingHours[key].isOpen}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            fontSize: '1rem',
+                            backgroundColor: formData.operatingHours[key].isOpen ? 'white' : '#f3f4f6',
+                            cursor: formData.operatingHours[key].isOpen ? 'pointer' : 'not-allowed'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '0.85rem',
+                          fontWeight: '600',
+                          marginBottom: '0.25rem',
+                          color: '#6b7280'
+                        }}>
+                          Closes
+                        </label>
+                        <input
+                          type="time"
+                          value={formData.operatingHours[key].closeTime}
+                          onChange={(e) => handleTimeChange(key, 'closeTime', e.target.value)}
+                          disabled={!formData.operatingHours[key].isOpen}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            fontSize: '1rem',
+                            backgroundColor: formData.operatingHours[key].isOpen ? 'white' : '#f3f4f6',
+                            cursor: formData.operatingHours[key].isOpen ? 'pointer' : 'not-allowed'
+                          }}
+                        />
+                      </div>
                     </div>
-                    
-                    <div>
-                      <label style={{
-                        display: 'block',
-                        marginBottom: '0.3rem',
-                        fontSize: '0.9rem',
-                        color: colors.darkNavy,
-                        fontWeight: '500'
-                      }}>
-                        Close Time
-                      </label>
-                      <input
-                        type="time"
-                        value={formData.operatingHours[key].closeTime}
-                        onChange={(e) => handleTimeChange(key, 'closeTime', e.target.value)}
-                        disabled={!formData.operatingHours[key].isOpen || formData.alwaysOpen}
-                        style={{
-                          width: '100%',
-                          padding: '0.7rem',
-                          border: `1px solid ${colors.lightBlue}`,
-                          borderRadius: '6px',
-                          fontSize: '0.95rem',
-                          backgroundColor: (formData.operatingHours[key].isOpen && !formData.alwaysOpen) ? 'white' : '#f0f0f0',
-                          cursor: (formData.operatingHours[key].isOpen && !formData.alwaysOpen) ? 'pointer' : 'not-allowed'
-                        }}
-                      />
-                    </div>
-                    
-                    {timeErrors[key] && !formData.alwaysOpen && (
+                    {timeErrors[key] && (
                       <div style={{
-                        gridColumn: '2 / 4',
-                        color: 'red',
-                        fontSize: '0.85rem',
-                        marginTop: '0.3rem'
+                        marginTop: '0.5rem',
+                        color: '#ef4444',
+                        fontSize: '0.85rem'
                       }}>
                         {timeErrors[key]}
                       </div>
@@ -1491,35 +1320,46 @@ const Update_Business = () => {
                   </div>
                 ))}
               </div>
-            </div>
-            
-            {/* Operating hours validation error */}
+            )}
+
             {errors.operatingHours && (
               <div style={{
-                color: '#ff4444',
-                fontSize: '0.9rem',
                 marginTop: '1rem',
-                padding: '0.5rem',
-                backgroundColor: '#ffe6e6',
-                borderRadius: '4px',
-                border: '1px solid #ff4444'
+                padding: '1rem',
+                backgroundColor: '#fef2f2',
+                border: '2px solid #ef4444',
+                borderRadius: '8px',
+                color: '#ef4444',
+                fontWeight: '500'
               }}>
                 {errors.operatingHours}
               </div>
             )}
-            
-            <p style={{
-              marginTop: '1rem',
-              fontSize: '0.9rem',
-              color: colors.mediumBlue,
-              fontStyle: 'italic'
-            }}>
-              * {formData.alwaysOpen 
-                ? 'Your business is set to always open (24/7). Uncheck "Always Open" to set specific hours.' 
-                : 'Check the days your business is open and set the operating hours. Close time must be after open time.'
-              }
-            </p>
           </div>
+        );
+
+      case 'Services':
+        return (
+          <FormField label="New Services" error={errors.newServices}>
+            <textarea
+              name="newServices"
+              value={formData.newServices}
+              onChange={handleInputChange}
+              placeholder="Enter the services your business offers (e.g., Wedding & Reception Venue, Full-Service Catering, Event Planning, etc.)"
+              rows={5}
+              style={{
+                ...inputStyle(errors.newServices),
+                resize: 'vertical'
+              }}
+            />
+            <div style={{
+              fontSize: '0.85rem',
+              color: colors.mediumBlue,
+              marginTop: '0.3rem'
+            }}>
+              Separate multiple services with commas for better readability
+            </div>
+          </FormField>
         );
 
       case 'Business Images':
@@ -1532,23 +1372,13 @@ const Update_Business = () => {
               setValidationErrors={setErrors}
               maxImages={5}
             />
-            {errors.images && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.images}
-              </div>
-            )}
             
-            {/* Display current images if available */}
             {businessData?.imageUrl && businessData.imageUrl.length > 0 && (
               <div style={{ marginTop: '1.5rem' }}>
                 <h4 style={{
                   color: colors.darkNavy,
                   fontSize: '1rem',
-                  fontWeight: 'bold',
+                  fontWeight: '600',
                   marginBottom: '0.8rem'
                 }}>
                   Current Business Images ({businessData.imageUrl.length}):
@@ -1564,7 +1394,7 @@ const Update_Business = () => {
                       aspectRatio: '1',
                       borderRadius: '8px',
                       overflow: 'hidden',
-                      border: `2px solid ${colors.lightBlue}`
+                      border: '2px solid #e5e7eb'
                     }}>
                       <img
                         src={url}
@@ -1586,18 +1416,18 @@ const Update_Business = () => {
           </div>
         );
 
+      case 'Products':
+        return (
+          <ProductsUpdateSection
+            businessData={businessData}
+            onProductsChange={handleProductsChange}
+            validationError={productsValidationError}
+          />
+        );
+
       case 'Other':
         return (
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.7rem',
-              color: colors.darkNavy,
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}>
-              Describe What You Want to Change <span style={{ color: 'red' }}>*</span>
-            </label>
+          <FormField label="Describe What You Want to Change" error={errors.otherDescription}>
             <textarea
               name="otherDescription"
               value={formData.otherDescription}
@@ -1605,14 +1435,8 @@ const Update_Business = () => {
               placeholder="Please describe in detail what you want to update or change about your business..."
               rows={4}
               style={{
-                width: '100%',
-                padding: '1rem',
-                border: `2px solid ${errors.otherDescription ? '#ff4444' : colors.lightBlue}`,
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                boxSizing: 'border-box'
+                ...inputStyle(errors.otherDescription),
+                resize: 'vertical'
               }}
             />
             <div style={{
@@ -1623,16 +1447,7 @@ const Update_Business = () => {
             }}>
               {formData.otherDescription.length} characters
             </div>
-            {errors.otherDescription && (
-              <div style={{
-                color: '#ff4444',
-                fontSize: '0.8rem',
-                marginTop: '0.3rem'
-              }}>
-                {errors.otherDescription}
-              </div>
-            )}
-          </div>
+          </FormField>
         );
 
       default:
@@ -1640,277 +1455,8 @@ const Update_Business = () => {
     }
   };
 
-  // Business Card Component (updated to show current images)
-  const BusinessCard = ({ business }) => (
-    <div style={{
-      backgroundColor: 'white',
-      padding: '1.5rem',
-      borderRadius: '10px',
-      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-      marginBottom: '2rem',
-      border: `2px solid ${getStatusColor(business.status)}`,
-      position: 'relative'
-    }}>
-      {/* Status Badge */}
-      <div style={{
-        position: 'absolute',
-        top: '1rem',
-        right: '1rem',
-        backgroundColor: getStatusColor(business.status),
-        color: 'white',
-        padding: '0.3rem 0.8rem',
-        borderRadius: '15px',
-        fontSize: '0.8rem',
-        fontWeight: 'bold',
-        zIndex: 1
-      }}>
-        {getStatusText(business.status)}
-      </div>
-
-      {/* Business Images */}
-      {business.imageUrl && business.imageUrl.length > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h4 style={{
-            color: colors.darkNavy,
-            fontSize: '1rem',
-            fontWeight: 'bold',
-            marginBottom: '0.8rem'
-          }}>
-            Business Images ({business.imageUrl.length}):
-          </h4>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-            gap: '0.5rem',
-            maxHeight: '200px',
-            overflowY: 'auto'
-          }}>
-            {business.imageUrl.slice(0, 8).map((url, index) => (
-              <div key={index} style={{
-                position: 'relative',
-                aspectRatio: '1',
-                borderRadius: '6px',
-                overflow: 'hidden',
-                border: `1px solid ${colors.lightBlue}`
-              }}>
-                <img
-                  src={url}
-                  alt={`Business image ${index + 1}`}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              </div>
-            ))}
-            {business.imageUrl.length > 8 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                aspectRatio: '1',
-                backgroundColor: colors.lightGray,
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                color: colors.darkNavy,
-                fontWeight: 'bold'
-              }}>
-                +{business.imageUrl.length - 8} more
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr',
-        gap: '1.5rem',
-        marginBottom: '1rem'
-      }}>
-        
-        {/* Main Content Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1rem',
-          marginTop: '2rem'
-        }}>
-          <div>
-            <h3 style={{ color: colors.darkNavy, margin: '0 0 0.5rem 0' }}>
-              {business.name || 'N/A'}
-            </h3>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumBlue, fontWeight: 'bold' }}>
-              <strong>Business ID:</strong> {business.business_ID || 'N/A'}
-            </p>
-            {business.originalTempID && (
-              <p style={{ margin: '0.25rem 0', color: colors.mediumGray, fontSize: '0.9rem' }}>
-                <strong>Original Temp ID:</strong> {business.originalTempID}
-              </p>
-            )}
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Category:</strong> {business.category || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>District:</strong> {business.district || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Location:</strong> {business.location || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Address:</strong> {business.address || 'N/A'}
-            </p>
-          </div>
-          
-          <div>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Contact:</strong> {business.contact || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Email:</strong> {business.email || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>WhatsApp:</strong> {business.whatsapp || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Website:</strong> {business.website || 'N/A'}
-            </p>
-            {business.status === 'approved' && business.approvedAt && (
-              <p style={{ margin: '0.25rem 0', color: '#28a745', fontWeight: '500' }}>
-                <strong>Approved:</strong> {formatDate(business.approvedAt)}
-              </p>
-            )}
-            {business.createdAt && (
-              <p style={{ margin: '0.25rem 0', color: colors.mediumBlue, fontWeight: '500' }}>
-                <strong>Created:</strong> {formatDate(business.createdAt)}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* About Section */}
-      {business.about && (
-        <div style={{ marginBottom: '1rem' }}>
-          <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-            <strong>About:</strong> {business.about}
-          </p>
-        </div>
-      )}
-
-      {/* Operating Hours */}
-      <div style={{ marginBottom: '1rem' }}>
-        <strong style={{ color: colors.darkNavy }}>Operating Hours:</strong>
-        {business.alwaysOpen ? (
-          <span style={{ marginLeft: '0.5rem', color: colors.mediumBlue }}>
-            Always Open (24/7)
-          </span>
-        ) : business.operatingTimes ? (
-          <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
-            {Object.entries(business.operatingTimes).map(([day, hours]) => (
-              <div key={day} style={{ margin: '0.2rem 0' }}>
-                <strong>{day.charAt(0).toUpperCase() + day.slice(1)}:</strong>{' '}
-                {hours && typeof hours === 'object' && hours.isOpen 
-                  ? `${hours.openTime || 'N/A'} - ${hours.closeTime || 'N/A'}` 
-                  : 'Closed'
-                }
-              </div>
-            ))}
-          </div>
-        ) : (
-          <span style={{ marginLeft: '0.5rem', color: colors.mediumGray }}>
-            No operating hours specified
-          </span>
-        )}
-      </div>
-
-      {/* Contact Links */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '1rem', 
-        flexWrap: 'wrap',
-        marginTop: '1rem',
-        marginBottom: '1rem'
-      }}>
-        {business.website && (
-          <a 
-            href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: colors.mediumBlue,
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            Visit Website
-          </a>
-        )}
-        {business.facebook && (
-          <a 
-            href={business.facebook.startsWith('http') ? business.facebook : `https://${business.facebook}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: '#4267B2',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            Facebook
-          </a>
-        )}
-        {business.locationUrl && (
-          <a 
-            href={business.locationUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: '#34A853',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            View Location
-          </a>
-        )}
-        {business.whatsapp && (
-          <a 
-            href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`}
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: '#25D366',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            WhatsApp
-          </a>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <>
-      {/* Alert Notification */}
       <AlertNotification
         isVisible={alert.isVisible}
         onClose={closeAlert}
@@ -1923,163 +1469,148 @@ const Update_Business = () => {
 
       <style>
         {`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
           @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
           @media (max-width: 768px) {
-            .form-grid {
-              grid-template-columns: 1fr !important;
-            }
-            .update-main {
-              padding: 1.5rem !important;
-            }
-            .form-container {
-              padding: 1.5rem !important;
-            }
-            .update-title {
-              font-size: 1.8rem !important;
-            }
-            .form-actions {
-              flex-direction: column !important;
-              gap: 1rem !important;
-            }
-            .form-actions button {
-              width: 100% !important;
-            }
-            .operating-hours-row {
-              grid-template-columns: 1fr !important;
-              gap: 0.5rem !important;
-            }
-            .operating-hours-row label {
-              margin-bottom: 0.5rem;
-            }
+            .update-container { padding: 1.5rem !important; }
+            .update-title { font-size: 1.8rem !important; }
+            .form-card { padding: 1.5rem !important; }
+            .search-grid { grid-template-columns: 1fr !important; }
+            .business-card-grid { grid-template-columns: 1fr !important; }
           }
         `}
       </style>
-      
-      <main className="update-main" style={{
-        flex: 1,
-        padding: '3rem',
-        backgroundColor: '#ffffff',
-        minHeight: '60vh',
-        width: '100%'
+
+      <div style={{
+        minHeight: '100vh',
+        background: '#FFFFFF',
+        padding: '2rem 1rem'
       }}>
-        <div style={{ 
-          width: '100%',
+        <div className="update-container" style={{
           maxWidth: '1200px',
           margin: '0 auto'
         }}>
+          {/* Header */}
           <div style={{
-            marginBottom: '3rem'
+            textAlign: 'center',
+            marginBottom: '2rem'
           }}>
             <h1 className="update-title" style={{
-              color: colors.darkNavy,
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              margin: 0
+              fontSize: '2.5rem',
+              fontWeight: '700',
+              color: '#1A365D',
+              marginBottom: '0.5rem'
             }}>
               Update Your Business
             </h1>
+            <p style={{
+              fontSize: '1.1rem',
+              color: colors.mediumBlue,
+              maxWidth: '700px',
+              margin: '0 auto'
+            }}>
+              Request changes to your business information. Our team will review and apply updates.
+            </p>
           </div>
 
-          <div className="form-container" style={{
+          {/* Main Form Card */}
+          <div className="form-card" style={{
             backgroundColor: 'white',
-            padding: '3rem',
-            borderRadius: '15px',
-            boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
-            width: '100%'
+            borderRadius: '20px',
+            padding: '2.5rem',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.07)',
+            animation: 'fadeIn 0.5s ease'
           }}>
-            <p style={{
-              color: colors.mediumBlue,
-              marginBottom: '2.5rem',
-              lineHeight: '1.6',
-              fontSize: '1.1rem'
-            }}>
-              Please provide your business ID and select the field you want to update. You can find your Business ID in the 'My Businesses' section of the mobile app. 
-              Our team will review your request and update your business information accordingly.
-            </p>
-
             <form onSubmit={handleSubmit}>
-              <div className="form-grid" style={{
+              {/* Search Section */}
+              <div className="search-grid" style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-                gap: '2rem',
-                marginBottom: '1.5rem'
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '1.5rem',
+                marginBottom: '2rem'
               }}>
+                {/* Business ID Input */}
                 <div>
                   <label style={{
                     display: 'block',
-                    marginBottom: '0.7rem',
+                    marginBottom: '0.5rem',
                     color: colors.darkNavy,
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                     fontSize: '1rem'
                   }}>
-                    Business ID <span style={{ color: 'red' }}>*</span>
+                    Business ID <span style={{ color: '#ef4444' }}>*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="businessId"
-                    value={formData.businessId}
-                    onChange={handleInputChange}
-                    placeholder="Enter your business ID"
-                    style={{
-                      width: '100%',
-                      padding: '1rem',
-                      border: `2px solid ${errors.businessId ? '#ff4444' : businessData ? '#00cc44' : (loadingBusiness ? '#ffc107' : colors.lightBlue)}`,
-                      borderRadius: '8px',
-                      fontSize: '1rem',
-                      fontFamily: 'inherit',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: '0.3rem'
-                  }}>
-                    <small style={{
-                      color: colors.mediumBlue,
-                      fontSize: '0.8rem'
+                  <div style={{ position: 'relative' }}>
+                    <div style={{
+                      position: 'absolute',
+                      left: '1rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: colors.mediumBlue
                     }}>
-                      Enter your business ID to find your business
-                    </small>
+                      <Search size={20} />
+                    </div>
+                    <input
+                      type="text"
+                      name="businessId"
+                      value={formData.businessId}
+                      onChange={handleInputChange}
+                      placeholder="Enter your business ID"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem 0.875rem 0.875rem 3rem',
+                        border: `2px solid ${
+                          errors.businessId ? '#ef4444' : 
+                          businessData ? '#10b981' : 
+                          loadingBusiness ? '#f59e0b' : '#e5e7eb'
+                        }`,
+                        borderRadius: '8px',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
+                      }}
+                    />
                     {formData.businessId && (
                       <div style={{
-                        color: businessData ? '#00cc44' : businessNotFound ? '#ff4444' : (loadingBusiness ? '#ffc107' : colors.mediumBlue),
-                        fontSize: '0.8rem',
-                        fontWeight: '500',
+                        position: 'absolute',
+                        right: '1rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.3rem'
+                        gap: '0.5rem',
+                        fontSize: '0.85rem',
+                        fontWeight: '600'
                       }}>
                         {loadingBusiness ? (
                           <>
-                            <div style={{
-                              width: '12px',
-                              height: '12px',
-                              border: '2px solid #ffc107',
-                              borderTop: '2px solid transparent',
-                              borderRadius: '50%',
-                              animation: 'spin 1s linear infinite'
-                            }}></div>
-                            Searching...
+                            <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                            <span style={{ color: '#f59e0b' }}>Searching...</span>
                           </>
                         ) : businessData ? (
-                          '✓ Business Found'
+                          <>
+                            <CheckCircle size={16} color="#10b981" />
+                            <span style={{ color: '#10b981' }}>Found</span>
+                          </>
                         ) : businessNotFound ? (
-                          '✗ Not Found'
-                        ) : (
-                          'Enter ID to search'
-                        )}
+                          <>
+                            <XCircle size={16} color="#ef4444" />
+                            <span style={{ color: '#ef4444' }}>Not Found</span>
+                          </>
+                        ) : null}
                       </div>
                     )}
                   </div>
                   {errors.businessId && (
                     <div style={{
-                      color: '#ff4444',
-                      fontSize: '0.8rem',
+                      color: '#ef4444',
+                      fontSize: '0.85rem',
                       marginTop: '0.3rem'
                     }}>
                       {errors.businessId}
@@ -2087,41 +1618,53 @@ const Update_Business = () => {
                   )}
                 </div>
 
+                {/* Field to Update Select */}
                 <div>
                   <label style={{
                     display: 'block',
-                    marginBottom: '0.7rem',
+                    marginBottom: '0.5rem',
                     color: colors.darkNavy,
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                     fontSize: '1rem'
                   }}>
-                    Field to Update <span style={{ color: 'red' }}>*</span>
+                    Field to Update <span style={{ color: '#ef4444' }}>*</span>
                   </label>
-                  <select
-                    name="fieldToUpdate"
-                    value={formData.fieldToUpdate}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '1rem',
-                      border: `2px solid ${errors.fieldToUpdate ? '#ff4444' : colors.lightBlue}`,
-                      borderRadius: '8px',
-                      fontSize: '1rem',
-                      fontFamily: 'inherit',
-                      backgroundColor: 'white',
-                      boxSizing: 'border-box',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="">Select field to update</option>
-                    {fieldOptions.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{
+                      position: 'absolute',
+                      left: '1rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: colors.mediumBlue
+                    }}>
+                      <Edit3 size={20} />
+                    </div>
+                    <select
+                      name="fieldToUpdate"
+                      value={formData.fieldToUpdate}
+                      onChange={handleInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem 0.875rem 0.875rem 3rem',
+                        border: `2px solid ${errors.fieldToUpdate ? '#ef4444' : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit',
+                        backgroundColor: 'white',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">Select field to update</option>
+                      {fieldOptions.map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </div>
                   {errors.fieldToUpdate && (
                     <div style={{
-                      color: '#ff4444',
-                      fontSize: '0.8rem',
+                      color: '#ef4444',
+                      fontSize: '0.85rem',
                       marginTop: '0.3rem'
                     }}>
                       {errors.fieldToUpdate}
@@ -2130,71 +1673,117 @@ const Update_Business = () => {
                 </div>
               </div>
 
-              {/* Display Business Data if found */}
+              {/* Business Info Card */}
               {businessData && (
-                <div style={{ marginBottom: '2rem' }}>
-                  <h3 style={{
-                    color: colors.darkNavy,
-                    fontSize: '1.3rem',
-                    fontWeight: '600',
+                <div style={{
+                  backgroundColor: '#f8f9ff',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  marginBottom: '2rem',
+                  border: '2px solid #e0e7ff'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
                     marginBottom: '1rem'
                   }}>
-                    📋 Current Business Information
-                  </h3>
-                  <BusinessCard business={businessData} />
+                    <Building2 size={24} color={colors.darkNavy} />
+                    <h3 style={{
+                      fontSize: '1.3rem',
+                      fontWeight: '700',
+                      color: colors.darkNavy,
+                      margin: 0
+                    }}>
+                      {businessData.name}
+                    </h3>
+                  </div>
+                  
+                  <div className="business-card-grid" style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                    gap: '1rem'
+                  }}>
+                    <div>
+                      <p style={{ margin: '0.5rem 0', color: colors.mediumBlue }}>
+                        <strong>ID:</strong> {businessData.business_ID}
+                      </p>
+                      <p style={{ margin: '0.5rem 0', color: colors.mediumBlue }}>
+                        <strong>Category:</strong> {businessData.category || 'N/A'}
+                      </p>
+                      <p style={{ margin: '0.5rem 0', color: colors.mediumBlue }}>
+                        <strong>Location:</strong> {businessData.location || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0.5rem 0', color: colors.mediumBlue }}>
+                        <strong>Contact:</strong> {businessData.contact || 'N/A'}
+                      </p>
+                      <p style={{ margin: '0.5rem 0', color: colors.mediumBlue }}>
+                        <strong>Email:</strong> {businessData.email || 'N/A'}
+                      </p>
+                      <p style={{ margin: '0.5rem 0', color: colors.mediumBlue }}>
+                        <strong>District:</strong> {businessData.district || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Show current value */}
+              {/* Current Value Display */}
               {businessData && formData.fieldToUpdate && formData.fieldToUpdate !== 'Other' && (
                 <div style={{
-                  backgroundColor: '#f8f9ff',
+                  backgroundColor: '#fffbeb',
                   padding: '1rem',
                   borderRadius: '8px',
                   marginBottom: '1.5rem',
-                  border: `1px solid ${colors.lightBlue}`
+                  border: '2px solid #fef08a'
                 }}>
                   <h4 style={{
                     color: colors.darkNavy,
                     fontSize: '1rem',
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                     marginBottom: '0.5rem'
                   }}>
                     Current {formData.fieldToUpdate}:
                   </h4>
                   <p style={{
-                    color: colors.mediumBlue,
+                    color: '#78350f',
                     fontSize: '0.95rem',
                     margin: 0,
-                    wordBreak: 'break-word'
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap'
                   }}>
-                    {getCurrentValue()}
+                    {getDisplayValue()}
                   </p>
                 </div>
               )}
 
-              {/* Dynamic form field based on selection */}
+              {/* Dynamic Form Fields */}
               {renderDynamicField()}
 
-              <div className="form-actions" style={{
+              {/* Action Buttons */}
+              <div style={{
                 display: 'flex',
+                gap: '1rem',
                 justifyContent: 'flex-end',
-                gap: '1.5rem',
-                marginTop: '3rem'
+                marginTop: '2rem',
+                paddingTop: '2rem',
+                borderTop: '2px solid #e5e7eb'
               }}>
                 <button
                   type="button"
                   onClick={() => navigate('/')}
                   style={{
                     padding: '1rem 2rem',
-                    border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: colors.lightGray,
+                    backgroundColor: '#f3f4f6',
                     color: colors.darkNavy,
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
                     cursor: 'pointer',
-                    transition: 'background-color 0.3s ease'
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
                   }}
                 >
                   Cancel
@@ -2203,15 +1792,15 @@ const Update_Business = () => {
                   type="submit"
                   disabled={isSubmitting || !businessData}
                   style={{
-                    padding: '1rem 2rem',
-                    border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: isSubmitting || !businessData ? colors.mediumGray : colors.darkNavy,
+                    padding: '1rem 2.5rem',
+                    backgroundColor: isSubmitting || !businessData ? '#cccccc' : '#3183B5',
                     color: 'white',
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
+                    border: 'none',
+                    borderRadius: '10px',
                     cursor: isSubmitting || !businessData ? 'not-allowed' : 'pointer',
-                    transition: 'background-color 0.3s ease',
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem'
@@ -2219,14 +1808,7 @@ const Update_Business = () => {
                 >
                   {isSubmitting ? (
                     <>
-                      <div style={{
-                        width: '16px',
-                        height: '16px',
-                        border: '2px solid #ffffff',
-                        borderTop: '2px solid transparent',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                      }}></div>
+                      <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
                       Submitting...
                     </>
                   ) : (
@@ -2237,7 +1819,7 @@ const Update_Business = () => {
             </form>
           </div>
         </div>
-      </main>
+      </div>
     </>
   );
 };

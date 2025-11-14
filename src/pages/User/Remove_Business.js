@@ -1,10 +1,11 @@
-// pages/Remove_Business.js
+// pages/Remove_Business.js - Modern UI (All Firebase functions preserved)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../configs/FirebaseConfigs.js';
 import { colors } from '../../utils/colors.js';
 import AlertNotification from '../../components/AlertNotification.js';
+import { Search, AlertCircle, Trash2, FileText, Building2, MapPin, Phone, Clock, Globe, Calendar } from 'lucide-react';
 
 const Remove_Business = () => {
   const navigate = useNavigate();
@@ -34,42 +35,42 @@ const Remove_Business = () => {
     {
       value: 'business_closed',
       label: 'Business Permanently Closed',
-      description: 'The business has shut down and is no longer operating'
+      description: 'The business has shut down and is no longer operating',
     },
     {
       value: 'duplicate_listing',
       label: 'Duplicate Listing',
-      description: 'This business is already listed under a different Business ID'
+      description: 'This business is already listed under a different Business ID',
     },
     {
       value: 'incorrect_information',
       label: 'Incorrect Business Information',
-      description: 'The business information is completely wrong and cannot be corrected'
+      description: 'The business information is completely wrong and cannot be corrected',
     },
     {
       value: 'not_my_business',
       label: 'Not My Business',
-      description: 'This business was listed without my permission'
+      description: 'This business was listed without my permission',
     },
     {
       value: 'relocating',
       label: 'Business Relocating',
-      description: 'Moving to a new location and will re-register with new details'
+      description: 'Moving to a new location and will re-register with new details',
     },
     {
       value: 'change_ownership',
       label: 'Change of Ownership',
-      description: 'Business has been sold or transferred to new ownership'
+      description: 'Business has been sold or transferred to new ownership',
     },
     {
       value: 'privacy_concerns',
       label: 'Privacy Concerns',
-      description: 'No longer want business information to be publicly listed'
+      description: 'No longer want business information to be publicly listed',
     },
     {
       value: 'other',
       label: 'Other Reason',
-      description: 'Please specify your reason in the comments below'
+      description: 'Please specify your reason in the comments below',
     }
   ];
 
@@ -197,7 +198,7 @@ const Remove_Business = () => {
         reason: reasonText,
         reasonCategory: formData.reason,
         additionalComments: formData.additionalComments.trim() || null,
-        businessData: businessData, // Store complete business data for reference
+        businessData: businessData,
         requestedAt: new Date(),
         status: 'pending_review',
         reviewedBy: null,
@@ -205,7 +206,7 @@ const Remove_Business = () => {
         removedAt: null
       };
 
-      // Add to Temporary-Remove-Requests collection for admin review
+      // Add to Temporary-Remove-Requests collection
       await addDoc(collection(db, 'Temporary-Remove-Requests'), removalRequestData);
 
       showAlert(
@@ -252,11 +253,11 @@ const Remove_Business = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'approved':
-        return '#28a745';
+        return '#10b981';
       case 'pending':
-        return '#ffc107';
+        return '#f59e0b';
       case 'rejected':
-        return '#dc3545';
+        return '#ef4444';
       default:
         return colors.mediumGray;
     }
@@ -271,54 +272,65 @@ const Remove_Business = () => {
   const BusinessCard = ({ business }) => (
     <div style={{
       backgroundColor: 'white',
-      padding: '1.5rem',
-      borderRadius: '10px',
-      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-      marginBottom: '2rem',
+      padding: '2rem',
+      borderRadius: '16px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
       border: `2px solid ${getStatusColor(business.status)}`,
-      position: 'relative'
+      position: 'relative',
+      marginBottom: '2rem'
     }}>
       {/* Status Badge */}
       <div style={{
         position: 'absolute',
-        top: '1rem',
-        right: '1rem',
+        top: '1.5rem',
+        right: '1.5rem',
         backgroundColor: getStatusColor(business.status),
         color: 'white',
-        padding: '0.3rem 0.8rem',
-        borderRadius: '15px',
-        fontSize: '0.8rem',
-        fontWeight: 'bold',
-        zIndex: 1
+        padding: '0.5rem 1rem',
+        borderRadius: '20px',
+        fontSize: '0.85rem',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
       }}>
         {getStatusText(business.status)}
       </div>
 
       {/* Business Images */}
       {business.imageUrl && business.imageUrl.length > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h4 style={{
-            color: colors.darkNavy,
-            fontSize: '1rem',
-            fontWeight: 'bold',
-            marginBottom: '0.8rem'
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem'
           }}>
-            Business Images ({business.imageUrl.length}):
-          </h4>
+            <Building2 size={20} color={colors.mediumBlue} />
+            <h4 style={{
+              color: colors.darkNavy,
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              margin: 0
+            }}>
+              Business Images ({business.imageUrl.length})
+            </h4>
+          </div>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-            gap: '0.5rem',
-            maxHeight: '200px',
-            overflowY: 'auto'
+            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+            gap: '0.75rem',
+            maxHeight: '250px',
+            overflowY: 'auto',
+            padding: '0.5rem'
           }}>
             {business.imageUrl.slice(0, 8).map((url, index) => (
               <div key={index} style={{
                 position: 'relative',
                 aspectRatio: '1',
-                borderRadius: '6px',
+                borderRadius: '12px',
                 overflow: 'hidden',
-                border: `1px solid ${colors.lightBlue}`
+                border: `2px solid ${colors.lightBlue}`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}>
                 <img
                   src={url}
@@ -341,106 +353,285 @@ const Remove_Business = () => {
                 justifyContent: 'center',
                 aspectRatio: '1',
                 backgroundColor: colors.lightGray,
-                borderRadius: '6px',
-                fontSize: '0.8rem',
+                borderRadius: '12px',
+                fontSize: '0.9rem',
                 color: colors.darkNavy,
-                fontWeight: 'bold'
+                fontWeight: '600'
               }}>
-                +{business.imageUrl.length - 8} more
+                +{business.imageUrl.length - 8}
               </div>
             )}
           </div>
         </div>
       )}
 
+      {/* Business Details */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr',
-        gap: '1.5rem',
-        marginBottom: '1rem'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '2rem',
+        marginTop: '1.5rem'
       }}>
-        
-        {/* Main Content Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1rem',
-          marginTop: '2rem'
-        }}>
-          <div>
-            <h3 style={{ color: colors.darkNavy, margin: '0 0 0.5rem 0' }}>
-              {business.name || 'N/A'}
-            </h3>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumBlue, fontWeight: 'bold' }}>
-              <strong>Business ID:</strong> {business.business_ID || 'N/A'}
-            </p>
-            {business.originalTempID && (
-              <p style={{ margin: '0.25rem 0', color: colors.mediumGray, fontSize: '0.9rem' }}>
-                <strong>Original Temp ID:</strong> {business.originalTempID}
-              </p>
-            )}
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Category:</strong> {business.category || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>District:</strong> {business.district || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Location:</strong> {business.location || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Address:</strong> {business.address || 'N/A'}
-            </p>
-          </div>
+        {/* Left Column */}
+        <div>
+          <h3 style={{ 
+            color: colors.darkNavy, 
+            margin: '0 0 1rem 0',
+            fontSize: '1.5rem',
+            fontWeight: '700'
+          }}>
+            {business.name || 'N/A'}
+          </h3>
           
-          <div>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Contact:</strong> {business.contact || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Email:</strong> {business.email || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>WhatsApp:</strong> {business.whatsapp || 'N/A'}
-            </p>
-            <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-              <strong>Website:</strong> {business.website || 'N/A'}
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <InfoRow icon={<FileText size={16} />} label="Business ID" value={business.business_ID || 'N/A'} highlight />
+            {business.originalTempID && (
+              <InfoRow icon={<FileText size={16} />} label="Original Temp ID" value={business.originalTempID} />
+            )}
+            <InfoRow icon={<Building2 size={16} />} label="Category" value={business.category || 'N/A'} />
+            <InfoRow icon={<MapPin size={16} />} label="District" value={business.district || 'N/A'} />
+            <InfoRow icon={<MapPin size={16} />} label="Location" value={business.location || 'N/A'} />
+          </div>
+        </div>
+        
+        {/* Right Column */}
+        <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <InfoRow icon={<Phone size={16} />} label="Contact" value={business.contact || 'N/A'} />
+            <InfoRow icon={<Phone size={16} />} label="WhatsApp" value={business.whatsapp || 'N/A'} />
+            <InfoRow icon={<Globe size={16} />} label="Email" value={business.email || 'N/A'} />
+            <InfoRow icon={<Globe size={16} />} label="Website" value={business.website || 'N/A'} />
             {business.status === 'approved' && business.approvedAt && (
-              <p style={{ margin: '0.25rem 0', color: '#28a745', fontWeight: '500' }}>
-                <strong>Approved:</strong> {formatDate(business.approvedAt)}
-              </p>
+              <InfoRow 
+                icon={<Calendar size={16} />} 
+                label="Approved" 
+                value={formatDate(business.approvedAt)} 
+                valueColor="#10b981"
+              />
             )}
             {business.createdAt && (
-              <p style={{ margin: '0.25rem 0', color: colors.mediumBlue, fontWeight: '500' }}>
-                <strong>Created:</strong> {formatDate(business.createdAt)}
-              </p>
+              <InfoRow 
+                icon={<Calendar size={16} />} 
+                label="Created" 
+                value={formatDate(business.createdAt)}
+              />
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Address */}
+      <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+          <MapPin size={16} color={colors.mediumBlue} style={{ marginTop: '0.2rem' }} />
+          <div>
+            <strong style={{ color: colors.darkNavy }}>Address:</strong>
+            <p style={{ margin: '0.25rem 0 0 0', color: colors.mediumGray }}>
+              {business.address || 'N/A'}
+            </p>
           </div>
         </div>
       </div>
 
       {/* About Section */}
       {business.about && (
-        <div style={{ marginBottom: '1rem' }}>
-          <p style={{ margin: '0.25rem 0', color: colors.mediumGray }}>
-            <strong>About:</strong> {business.about}
+        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '10px' }}>
+          <strong style={{ color: colors.darkNavy }}>About:</strong>
+          <p style={{ margin: '0.5rem 0 0 0', color: colors.mediumGray, lineHeight: '1.6' }}>
+            {business.about}
           </p>
         </div>
       )}
 
+      {/* Services Section */}
+      {business.Services && (
+        <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '10px' }}>
+          <strong style={{ color: colors.darkNavy }}>Services:</strong>
+          <p style={{ margin: '0.5rem 0 0 0', color: colors.mediumGray, lineHeight: '1.6' }}>
+            {business.Services}
+          </p>
+        </div>
+      )}
+
+      {/* Products Section */}
+      {business.products && business.products.length > 0 && (
+        <div style={{ marginTop: '1.5rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem'
+          }}>
+            <Building2 size={20} color={colors.mediumBlue} />
+            <h4 style={{
+              color: colors.darkNavy,
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              margin: 0
+            }}>
+              Products ({business.products.length})
+            </h4>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '1rem'
+          }}>
+            {business.products.map((product, index) => (
+              <div key={index} style={{
+                backgroundColor: '#fafafa',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
+                padding: '1rem',
+                transition: 'all 0.2s'
+              }}>
+                {/* Product Image */}
+                {product.imageUrl && (
+                  <div style={{
+                    width: '100%',
+                    height: '180px',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    marginBottom: '0.75rem',
+                    backgroundColor: '#f3f4f6'
+                  }}>
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name || 'Product'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {/* Product Details */}
+                <div>
+                  <h5 style={{
+                    color: colors.darkNavy,
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    {product.name || 'Unnamed Product'}
+                  </h5>
+                  
+                  {product.itemCode && (
+                    <p style={{
+                      fontSize: '0.85rem',
+                      color: colors.mediumGray,
+                      margin: '0 0 0.5rem 0'
+                    }}>
+                      <strong>Item Code:</strong> {product.itemCode}
+                    </p>
+                  )}
+                  
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    {product.newPrice && (
+                      <span style={{
+                        fontSize: '1.1rem',
+                        fontWeight: '700',
+                        color: '#10b981'
+                      }}>
+                        Rs. {product.newPrice}
+                      </span>
+                    )}
+                    {product.oldPrice && (
+                      <span style={{
+                        fontSize: '0.9rem',
+                        color: '#9ca3af',
+                        textDecoration: 'line-through'
+                      }}>
+                        Rs. {product.oldPrice}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {product.discount && (
+                    <div style={{
+                      display: 'inline-block',
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
+                      marginBottom: '0.5rem'
+                    }}>
+                      {product.discount}% OFF
+                    </div>
+                  )}
+                  
+                  <div style={{
+                    marginTop: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e5e7eb'
+                  }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontSize: '0.85rem',
+                      color: product.inStock ? '#10b981' : '#ef4444',
+                      fontWeight: '600'
+                    }}>
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: product.inStock ? '#10b981' : '#ef4444'
+                      }}></span>
+                      {product.inStock !== false ? 'In Stock' : 'Out of Stock'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Operating Hours */}
-      <div style={{ marginBottom: '1rem' }}>
-        <strong style={{ color: colors.darkNavy }}>Operating Hours:</strong>
+      <div style={{ marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <Clock size={18} color={colors.mediumBlue} />
+          <strong style={{ color: colors.darkNavy, fontSize: '1.05rem' }}>Operating Hours:</strong>
+        </div>
         {business.alwaysOpen ? (
-          <span style={{ marginLeft: '0.5rem', color: colors.mediumBlue }}>
+          <div style={{ 
+            padding: '0.75rem 1rem',
+            backgroundColor: '#dcfce7',
+            borderRadius: '8px',
+            color: '#166534',
+            fontWeight: '600'
+          }}>
             Always Open (24/7)
-          </span>
-        ) : business.operatingTimes ? (
-          <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
-            {Object.entries(business.operatingTimes).map(([day, hours]) => (
-              <div key={day} style={{ margin: '0.2rem 0' }}>
-                <strong>{day.charAt(0).toUpperCase() + day.slice(1)}:</strong>{' '}
+          </div>
+        ) : business.Operating_Times ? (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '0.5rem',
+            fontSize: '0.9rem'
+          }}>
+            {Object.entries(business.Operating_Times).map(([day, hours]) => (
+              <div key={day} style={{ 
+                padding: '0.5rem',
+                backgroundColor: hours?.isOpen ? '#f0fdf4' : '#f3f4f6',
+                borderRadius: '6px',
+                border: `1px solid ${hours?.isOpen ? '#86efac' : '#e5e7eb'}`
+              }}>
+                <strong style={{ textTransform: 'capitalize' }}>{day}:</strong>{' '}
                 {hours && typeof hours === 'object' && hours.isOpen 
                   ? `${hours.openTime || 'N/A'} - ${hours.closeTime || 'N/A'}` 
                   : 'Closed'
@@ -449,95 +640,133 @@ const Remove_Business = () => {
             ))}
           </div>
         ) : (
-          <span style={{ marginLeft: '0.5rem', color: colors.mediumGray }}>
+          <span style={{ color: colors.mediumGray }}>
             No operating hours specified
           </span>
         )}
       </div>
 
       {/* Contact Links */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '1rem', 
-        flexWrap: 'wrap',
-        marginTop: '1rem',
-        marginBottom: '1rem'
-      }}>
-        {business.website && (
-          <a 
-            href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: colors.mediumBlue,
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            Visit Website
-          </a>
-        )}
-        {business.facebook && (
-          <a 
-            href={business.facebook.startsWith('http') ? business.facebook : `https://${business.facebook}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: '#4267B2',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            Facebook
-          </a>
-        )}
-        {business.locationUrl && (
-          <a 
-            href={business.locationUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: '#34A853',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            View Location
-          </a>
-        )}
-        {business.whatsapp && (
-          <a 
-            href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`}
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              backgroundColor: '#25D366',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '5px',
-              textDecoration: 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            WhatsApp
-          </a>
-        )}
-      </div>
+      {(business.website || business.facebook || business.locationUrl || business.whatsapp) && (
+        <div style={{ 
+          display: 'flex', 
+          gap: '0.75rem', 
+          flexWrap: 'wrap',
+          marginTop: '1.5rem',
+          paddingTop: '1.5rem',
+          borderTop: '2px solid #f3f4f6'
+        }}>
+          {business.website && (
+            <a 
+              href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                backgroundColor: colors.mediumBlue,
+                color: 'white',
+                padding: '0.625rem 1.25rem',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Globe size={16} />
+              Website
+            </a>
+          )}
+          {business.facebook && (
+            <a 
+              href={business.facebook.startsWith('http') ? business.facebook : `https://${business.facebook}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#1877f2',
+                color: 'white',
+                padding: '0.625rem 1.25rem',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontSize: '0.9rem',
+                fontWeight: '600'
+              }}
+            >
+              Facebook
+            </a>
+          )}
+          {business.locationUrl && (
+            <a 
+              href={business.locationUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#34a853',
+                color: 'white',
+                padding: '0.625rem 1.25rem',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontSize: '0.9rem',
+                fontWeight: '600'
+              }}
+            >
+              <MapPin size={16} />
+              Location
+            </a>
+          )}
+          {business.whatsapp && (
+            <a 
+              href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`}
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#25d366',
+                color: 'white',
+                padding: '0.625rem 1.25rem',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontSize: '0.9rem',
+                fontWeight: '600'
+              }}
+            >
+              <Phone size={16} />
+              WhatsApp
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Info Row Component
+  const InfoRow = ({ icon, label, value, highlight, valueColor }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <span style={{ color: colors.mediumBlue }}>{icon}</span>
+      <span style={{ fontSize: '0.9rem' }}>
+        <strong style={{ color: colors.darkNavy }}>{label}:</strong>{' '}
+        <span style={{ 
+          color: valueColor || (highlight ? colors.mediumBlue : colors.mediumGray),
+          fontWeight: highlight ? '600' : '400'
+        }}>
+          {value}
+        </span>
+      </span>
     </div>
   );
 
   return (
     <>
-      {/* Alert Notification */}
       <AlertNotification
         isVisible={alert.isVisible}
         onClose={closeAlert}
@@ -555,164 +784,141 @@ const Remove_Business = () => {
             100% { transform: rotate(360deg); }
           }
           @media (max-width: 768px) {
-            .form-grid {
-              grid-template-columns: 1fr !important;
-            }
-            .remove-main {
+            .remove-container {
               padding: 1.5rem !important;
             }
-            .form-container {
-              padding: 1.5rem !important;
+            .remove-form {
+              padding: 2rem !important;
             }
-            .remove-title {
-              font-size: 1.8rem !important;
-            }
-            .form-actions {
-              flex-direction: column !important;
-              gap: 1rem !important;
-            }
-            .form-actions button {
-              width: 100% !important;
-            }
-            .reason-option {
-              padding: 1rem !important;
-            }
-          }
-          .reason-option:hover {
-            background-color: #f8f9ff !important;
-            border-color: ${colors.mediumBlue} !important;
-          }
-          .reason-option.selected {
-            background-color: #e8f4ff !important;
-            border-color: ${colors.mediumBlue} !important;
           }
         `}
       </style>
       
-      <main className="remove-main" style={{
-        flex: 1,
-        padding: '3rem',
-        backgroundColor: '#ffffff',
-        minHeight: '60vh',
-        width: '100%'
+      <div style={{
+        minHeight: '100vh',
+        background: '#ffffff',
+        padding: '2rem 1rem'
       }}>
-        <div style={{ 
-          width: '100%',
+        <div style={{
           maxWidth: '1200px',
           margin: '0 auto'
         }}>
+          {/* Header */}
           <div style={{
+            textAlign: 'center',
             marginBottom: '3rem'
           }}>
-            <h1 className="remove-title" style={{
+            <h1 style={{
               color: colors.darkNavy,
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              margin: 0
+              fontSize: '2.5rem',
+              fontWeight: '700',
+              margin: '0 0 0.5rem 0'
             }}>
               Remove Your Business
             </h1>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '1.1rem',
+              margin: 0
+            }}>
+              Submit a Request to Remove your Business from our Directory
+            </p>
           </div>
 
-          <div className="form-container" style={{
+          {/* Main Form Container */}
+          <div className="remove-form" style={{
             backgroundColor: 'white',
             padding: '3rem',
-            borderRadius: '15px',
-            boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
-            width: '100%'
+            borderRadius: '20px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.08)'
           }}>
+            {/* Warning Notice */}
             <div style={{
-              backgroundColor: '#fff3cd',
-              border: '1px solid #ffeaa7',
-              borderRadius: '8px',
-              padding: '1rem',
-              marginBottom: '2rem'
+              backgroundColor: '#fef3c7',
+              border: '2px solid #fbbf24',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              marginBottom: '2.5rem',
+              display: 'flex',
+              gap: '1rem'
             }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.5rem'
-              }}>
-                <span style={{ fontSize: '1.2rem' }}>⚠️</span>
-                <div>
-                  <strong style={{ color: '#856404' }}>Important Notice:</strong>
-                  <p style={{
-                    margin: '0.5rem 0 0 0',
-                    color: '#856404',
-                    lineHeight: '1.5'
-                  }}>
-                    This action will permanently remove your business from our directory. 
-                    Please make sure this is what you want to do, as this action cannot be undone easily. 
-                    Our team will review your request before processing the removal.
-                  </p>
-                </div>
+              <AlertCircle size={24} color="#d97706" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+              <div>
+                <strong style={{ color: '#92400e', fontSize: '1.05rem', display: 'block', marginBottom: '0.5rem' }}>
+                  Important Notice
+                </strong>
+                <p style={{
+                  margin: 0,
+                  color: '#92400e',
+                  lineHeight: '1.6'
+                }}>
+                  This action will permanently remove your business from our directory. 
+                  Please make sure this is what you want to do, as this action cannot be undone easily. 
+                  Our team will review your request before processing the removal.
+                </p>
               </div>
             </div>
 
-            <p style={{
-              color: colors.mediumBlue,
-              marginBottom: '2.5rem',
-              lineHeight: '1.6',
-              fontSize: '1.1rem'
-            }}>
-              Please provide your Business ID and select a reason for removal. You can find your Business ID in the 'My Businesses' section of the mobile app.
-            </p>
-
             <form onSubmit={handleSubmit}>
-              {/* Business ID Field */}
-              <div style={{ marginBottom: '2rem' }}>
+              {/* Business ID Search */}
+              <div style={{ marginBottom: '2.5rem' }}>
                 <label style={{
                   display: 'block',
-                  marginBottom: '0.7rem',
+                  marginBottom: '0.75rem',
                   color: colors.darkNavy,
-                  fontWeight: 'bold',
-                  fontSize: '1rem'
+                  fontWeight: '600',
+                  fontSize: '1.05rem'
                 }}>
-                  Business ID <span style={{ color: 'red' }}>*</span>
+                  Business ID <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <input
-                  type="text"
-                  name="businessId"
-                  value={formData.businessId}
-                  onChange={handleInputChange}
-                  placeholder="Enter your business ID"
-                  style={{
-                    width: '100%',
-                    padding: '1rem',
-                    border: `2px solid ${errors.businessId ? '#ff4444' : businessData ? '#00cc44' : (loadingBusiness ? '#ffc107' : colors.lightBlue)}`,
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '0.3rem'
-                }}>
-                  <small style={{
-                    color: colors.mediumBlue,
-                    fontSize: '0.8rem'
-                  }}>
-                    Enter your business ID to find your business
-                  </small>
+                <div style={{ position: 'relative' }}>
+                  <Search 
+                    size={20} 
+                    color={colors.mediumBlue}
+                    style={{
+                      position: 'absolute',
+                      left: '1rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none'
+                    }}
+                  />
+                  <input
+                    type="text"
+                    name="businessId"
+                    value={formData.businessId}
+                    onChange={handleInputChange}
+                    placeholder="Enter your business ID"
+                    style={{
+                      width: '100%',
+                      padding: '1rem 1rem 1rem 3rem',
+                      border: `2px solid ${errors.businessId ? '#ef4444' : businessData ? '#10b981' : (loadingBusiness ? '#f59e0b' : '#e5e7eb')}`,
+                      borderRadius: '12px',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s'
+                    }}
+                  />
                   {formData.businessId && (
                     <div style={{
-                      color: businessData ? '#00cc44' : businessNotFound ? '#ff4444' : (loadingBusiness ? '#ffc107' : colors.mediumBlue),
-                      fontSize: '0.8rem',
-                      fontWeight: '500',
+                      position: 'absolute',
+                      right: '1rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: businessData ? '#10b981' : businessNotFound ? '#ef4444' : (loadingBusiness ? '#f59e0b' : colors.mediumBlue),
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.3rem'
+                      gap: '0.4rem'
                     }}>
                       {loadingBusiness ? (
                         <>
                           <div style={{
-                            width: '12px',
-                            height: '12px',
-                            border: '2px solid #ffc107',
+                            width: '14px',
+                            height: '14px',
+                            border: '2px solid #f59e0b',
                             borderTop: '2px solid transparent',
                             borderRadius: '50%',
                             animation: 'spin 1s linear infinite'
@@ -720,52 +926,66 @@ const Remove_Business = () => {
                           Searching...
                         </>
                       ) : businessData ? (
-                        '✓ Business Found'
+                        '✓ Found'
                       ) : businessNotFound ? (
                         '✗ Not Found'
-                      ) : (
-                        'Enter ID to search'
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
+                <small style={{
+                  color: colors.mediumBlue,
+                  fontSize: '0.85rem',
+                  marginTop: '0.5rem',
+                  display: 'block'
+                }}>
+                  Find your Business ID in the 'My Businesses' section of the mobile app
+                </small>
                 {errors.businessId && (
                   <div style={{
-                    color: '#ff4444',
-                    fontSize: '0.8rem',
-                    marginTop: '0.3rem'
+                    color: '#ef4444',
+                    fontSize: '0.85rem',
+                    marginTop: '0.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem'
                   }}>
+                    <AlertCircle size={14} />
                     {errors.businessId}
                   </div>
                 )}
               </div>
 
-              {/* Display Business Data if found */}
+              {/* Business Preview */}
               {businessData && (
-                <div style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '2.5rem' }}>
                   <h3 style={{
                     color: colors.darkNavy,
                     fontSize: '1.3rem',
                     fontWeight: '600',
-                    marginBottom: '1rem'
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
                   }}>
-                    📋 Business to be Removed
+                    <Building2 size={24} color={colors.mediumBlue} />
+                    Business to be Removed
                   </h3>
                   <BusinessCard business={businessData} />
                 </div>
               )}
 
-              {/* Removal Reason Selection */}
+              {/* Removal Reasons */}
               {businessData && (
-                <div style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '2.5rem' }}>
                   <label style={{
                     display: 'block',
                     marginBottom: '1rem',
                     color: colors.darkNavy,
-                    fontWeight: 'bold',
-                    fontSize: '1rem'
+                    fontWeight: '600',
+                    fontSize: '1.05rem'
                   }}>
-                    Reason for Removal <span style={{ color: 'red' }}>*</span>
+                    Reason for Removal <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   
                   <div style={{
@@ -775,21 +995,32 @@ const Remove_Business = () => {
                     {removalReasons.map((reason) => (
                       <div key={reason.value}>
                         <label 
-                          className={`reason-option ${formData.reason === reason.value ? 'selected' : ''}`}
                           style={{
                             display: 'block',
-                            padding: '1.2rem',
-                            border: `2px solid ${formData.reason === reason.value ? colors.mediumBlue : colors.lightBlue}`,
-                            borderRadius: '8px',
+                            padding: '1.25rem',
+                            border: `2px solid ${formData.reason === reason.value ? colors.mediumBlue : '#e5e7eb'}`,
+                            borderRadius: '12px',
                             cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            backgroundColor: formData.reason === reason.value ? '#e8f4ff' : 'white'
+                            transition: 'all 0.2s ease',
+                            backgroundColor: formData.reason === reason.value ? '#f0f9ff' : 'white'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (formData.reason !== reason.value) {
+                              e.currentTarget.style.backgroundColor = '#f9fafb';
+                              e.currentTarget.style.borderColor = colors.lightBlue;
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (formData.reason !== reason.value) {
+                              e.currentTarget.style.backgroundColor = 'white';
+                              e.currentTarget.style.borderColor = '#e5e7eb';
+                            }
                           }}
                         >
                           <div style={{
                             display: 'flex',
                             alignItems: 'flex-start',
-                            gap: '0.75rem'
+                            gap: '1rem'
                           }}>
                             <input
                               type="radio"
@@ -799,22 +1030,31 @@ const Remove_Business = () => {
                               onChange={handleInputChange}
                               style={{
                                 marginTop: '0.2rem',
-                                transform: 'scale(1.2)'
+                                transform: 'scale(1.3)',
+                                cursor: 'pointer',
+                                accentColor: colors.mediumBlue
                               }}
                             />
                             <div style={{ flex: 1 }}>
                               <div style={{
-                                fontWeight: 'bold',
-                                color: colors.darkNavy,
-                                marginBottom: '0.3rem',
-                                fontSize: '1rem'
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                marginBottom: '0.4rem'
                               }}>
-                                {reason.label}
+                                <span style={{ fontSize: '1.2rem' }}>{reason.icon}</span>
+                                <span style={{
+                                  fontWeight: '600',
+                                  color: colors.darkNavy,
+                                  fontSize: '1rem'
+                                }}>
+                                  {reason.label}
+                                </span>
                               </div>
                               <div style={{
-                                color: colors.mediumBlue,
+                                color: '#6b7280',
                                 fontSize: '0.9rem',
-                                lineHeight: '1.4'
+                                lineHeight: '1.5'
                               }}>
                                 {reason.description}
                               </div>
@@ -822,7 +1062,7 @@ const Remove_Business = () => {
                           </div>
                         </label>
                         
-                        {/* Custom reason input for "Other" option */}
+                        {/* Custom reason input */}
                         {formData.reason === 'other' && reason.value === 'other' && (
                           <div style={{ marginTop: '0.75rem' }}>
                             <input
@@ -834,8 +1074,8 @@ const Remove_Business = () => {
                               style={{
                                 width: '100%',
                                 padding: '1rem',
-                                border: `2px solid ${errors.customReason ? '#ff4444' : colors.lightBlue}`,
-                                borderRadius: '8px',
+                                border: `2px solid ${errors.customReason ? '#ef4444' : '#e5e7eb'}`,
+                                borderRadius: '10px',
                                 fontSize: '1rem',
                                 boxSizing: 'border-box',
                                 fontFamily: 'inherit'
@@ -843,10 +1083,14 @@ const Remove_Business = () => {
                             />
                             {errors.customReason && (
                               <div style={{
-                                color: '#ff4444',
-                                fontSize: '0.8rem',
-                                marginTop: '0.3rem'
+                                color: '#ef4444',
+                                fontSize: '0.85rem',
+                                marginTop: '0.4rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
                               }}>
+                                <AlertCircle size={14} />
                                 {errors.customReason}
                               </div>
                             )}
@@ -858,10 +1102,14 @@ const Remove_Business = () => {
                   
                   {errors.reason && (
                     <div style={{
-                      color: '#ff4444',
-                      fontSize: '0.8rem',
-                      marginTop: '0.5rem'
+                      color: '#ef4444',
+                      fontSize: '0.85rem',
+                      marginTop: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem'
                     }}>
+                      <AlertCircle size={14} />
                       {errors.reason}
                     </div>
                   )}
@@ -870,13 +1118,13 @@ const Remove_Business = () => {
 
               {/* Additional Comments */}
               {businessData && formData.reason && (
-                <div style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '2.5rem' }}>
                   <label style={{
                     display: 'block',
-                    marginBottom: '0.7rem',
+                    marginBottom: '0.75rem',
                     color: colors.darkNavy,
-                    fontWeight: 'bold',
-                    fontSize: '1rem'
+                    fontWeight: '600',
+                    fontSize: '1.05rem'
                   }}>
                     Additional Comments (Optional)
                   </label>
@@ -884,49 +1132,60 @@ const Remove_Business = () => {
                     name="additionalComments"
                     value={formData.additionalComments}
                     onChange={handleInputChange}
-                    placeholder="Any additional information you'd like to provide..."
-                    rows={4}
+                    placeholder="Share any additional information that might help us process your request..."
+                    rows={5}
                     style={{
                       width: '100%',
                       padding: '1rem',
-                      border: `2px solid ${colors.lightBlue}`,
-                      borderRadius: '8px',
+                      border: `2px solid #e5e7eb`,
+                      borderRadius: '12px',
                       fontSize: '1rem',
                       fontFamily: 'inherit',
                       resize: 'vertical',
-                      boxSizing: 'border-box'
+                      boxSizing: 'border-box',
+                      lineHeight: '1.6'
                     }}
                   />
                   <small style={{
-                    color: colors.mediumBlue,
-                    fontSize: '0.8rem',
-                    marginTop: '0.3rem',
+                    color: '#6b7280',
+                    fontSize: '0.85rem',
+                    marginTop: '0.5rem',
                     display: 'block'
                   }}>
-                    This information will help our team better understand your request
+                    This information will help our team better understand and process your request
                   </small>
                 </div>
               )}
 
-              <div className="form-actions" style={{
+              {/* Action Buttons */}
+              <div style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                gap: '1.5rem',
-                marginTop: '3rem'
+                gap: '1rem',
+                paddingTop: '2rem',
+                borderTop: '2px solid #f3f4f6'
               }}>
                 <button
                   type="button"
                   onClick={() => navigate('/')}
                   style={{
                     padding: '1rem 2rem',
-                    border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: colors.lightGray,
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
+                    backgroundColor: 'white',
                     color: colors.darkNavy,
                     fontSize: '1rem',
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                     cursor: 'pointer',
-                    transition: 'background-color 0.3s ease'
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                    e.currentTarget.style.borderColor = colors.mediumBlue;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
                   }}
                 >
                   Cancel
@@ -935,31 +1194,44 @@ const Remove_Business = () => {
                   type="submit"
                   disabled={isSubmitting || !businessData || !formData.reason}
                   style={{
-                    padding: '1rem 2rem',
+                    padding: '1rem 2.5rem',
                     border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: isSubmitting || !businessData || !formData.reason ? colors.mediumGray : '#dc3545',
+                    borderRadius: '10px',
+                    backgroundColor: isSubmitting || !businessData || !formData.reason ? '#d1d5db' : '#dc2626',
                     color: 'white',
                     fontSize: '1rem',
-                    fontWeight: 'bold',
+                    fontWeight: '600',
                     cursor: isSubmitting || !businessData || !formData.reason ? 'not-allowed' : 'pointer',
-                    transition: 'background-color 0.3s ease',
+                    transition: 'all 0.2s',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem'
+                    gap: '0.5rem',
+                    boxShadow: isSubmitting || !businessData || !formData.reason ? 'none' : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting && businessData && formData.reason) {
+                      e.currentTarget.style.backgroundColor = '#b91c1c';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSubmitting && businessData && formData.reason) {
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }
                   }}
                 >
                   {isSubmitting ? (
                     <>
                       <div style={{
-                        width: '16px',
-                        height: '16px',
+                        width: '18px',
+                        height: '18px',
                         border: '2px solid white',
                         borderTop: '2px solid transparent',
                         borderRadius: '50%',
                         animation: 'spin 1s linear infinite'
                       }}></div>
-                      Submitting...
+                      Submitting Request...
                     </>
                   ) : (
                     <>
@@ -970,8 +1242,39 @@ const Remove_Business = () => {
               </div>
             </form>
           </div>
+
+          {/* Help Section */}
+          <div style={{
+            marginTop: '2rem',
+            padding: '1.5rem',
+            backgroundColor: '#f0f9ff',
+            borderRadius: '12px',
+            border: '1px solid #bae6fd'
+          }}>
+            <h4 style={{
+              color: colors.darkNavy,
+              fontSize: '1.05rem',
+              fontWeight: '600',
+              marginBottom: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <AlertCircle size={20} color={colors.mediumBlue} />
+              Need Help?
+            </h4>
+            <p style={{
+              color: '#6b7280',
+              margin: 0,
+              lineHeight: '1.6',
+              fontSize: '0.95rem'
+            }}>
+              If you're having trouble finding your Business ID or need assistance with the removal process, 
+              please contact our support team. We're here to help you through the process.
+            </p>
+          </div>
         </div>
-      </main>
+      </div>
     </>
   );
 };

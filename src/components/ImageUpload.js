@@ -137,7 +137,7 @@ const ImageUpload = ({
         fontSize: '1.3rem',
         fontWeight: 'bold'
       }}>
-        Business Images
+        Business Images <span style={{ color: 'red' }}>*</span>
       </h3>
       
       <p style={{
@@ -332,7 +332,9 @@ const ImageUpload = ({
   );
 };
 
-// UPDATED uploadBusinessImages function - Improved with better error handling
+// ============================================
+// BUSINESS IMAGE UPLOAD FUNCTION
+// ============================================
 export const uploadBusinessImages = async (images, businessId) => {
   console.log('=== UPLOAD BUSINESS IMAGES FUNCTION START ===');
   console.log('Input images:', images?.length || 0);
@@ -355,7 +357,7 @@ export const uploadBusinessImages = async (images, businessId) => {
   const uploadedImages = [];
   const uploadPromises = [];
   
-  console.log(`Starting parallel upload of ${images.length} images...`);
+  console.log(`Starting parallel upload of ${images.length} images to business-images/...`);
   
   // Create upload promises for all images
   for (let i = 0; i < images.length; i++) {
@@ -363,7 +365,7 @@ export const uploadBusinessImages = async (images, businessId) => {
     
     const uploadPromise = (async (imageIndex) => {
       try {
-        console.log(`Processing image ${imageIndex + 1}/${images.length}: ${image.name}`);
+        console.log(`Processing business image ${imageIndex + 1}/${images.length}: ${image.name}`);
         
         // Validate image object
         if (!image || !image.file) {
@@ -381,7 +383,7 @@ export const uploadBusinessImages = async (images, businessId) => {
         const baseName = image.file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_');
         const fileName = `${businessId}_${timestamp}_${randomId}_${baseName}.${fileExtension}`;
         
-        // Create storage path
+        // Create storage path for BUSINESS IMAGES
         const storagePath = `business-images/${fileName}`;
         const imageRef = ref(storage, storagePath);
         
@@ -394,7 +396,8 @@ export const uploadBusinessImages = async (images, businessId) => {
             businessId: businessId,
             originalName: image.file.name,
             uploadTime: new Date().toISOString(),
-            imageId: image.id || `img_${imageIndex}`
+            imageId: image.id || `img_${imageIndex}`,
+            imageType: 'business'
           }
         };
         
@@ -428,11 +431,11 @@ export const uploadBusinessImages = async (images, businessId) => {
           uploadIndex: imageIndex
         };
         
-        console.log(`✅ Image ${imageIndex + 1} processed successfully`);
+        console.log(`✅ Business image ${imageIndex + 1} processed successfully`);
         return imageData;
         
       } catch (uploadError) {
-        console.error(`❌ Error uploading image ${imageIndex + 1}:`, uploadError);
+        console.error(`❌ Error uploading business image ${imageIndex + 1}:`, uploadError);
         
         // Provide specific error messages
         let errorMessage = 'Unknown upload error';
@@ -473,7 +476,7 @@ export const uploadBusinessImages = async (images, businessId) => {
   
   try {
     // Wait for all uploads to complete
-    console.log('Waiting for all uploads to complete...');
+    console.log('Waiting for all business image uploads to complete...');
     const results = await Promise.all(uploadPromises);
     
     // Filter out any failed uploads and sort by upload index
@@ -481,20 +484,21 @@ export const uploadBusinessImages = async (images, businessId) => {
       .filter(result => result && result.downloadURL)
       .sort((a, b) => (a.uploadIndex || 0) - (b.uploadIndex || 0));
     
-    console.log(`✅ Upload batch completed: ${successfulUploads.length}/${images.length} successful`);
+    console.log(`✅ Business image upload batch completed: ${successfulUploads.length}/${images.length} successful`);
     
     if (successfulUploads.length === 0) {
-      throw new Error('No images were uploaded successfully');
+      throw new Error('No business images were uploaded successfully');
     }
     
     if (successfulUploads.length < images.length) {
-      console.warn(`⚠️ Warning: Only ${successfulUploads.length} out of ${images.length} images were uploaded successfully`);
+      console.warn(`⚠️ Warning: Only ${successfulUploads.length} out of ${images.length} business images were uploaded successfully`);
     }
     
     // Log final results
-    console.log('=== UPLOAD RESULTS ===');
+    console.log('=== BUSINESS IMAGE UPLOAD RESULTS ===');
     console.log('Total images processed:', images.length);
     console.log('Successful uploads:', successfulUploads.length);
+    console.log('Storage folder: business-images/');
     console.log('Download URLs:', successfulUploads.map(img => img.downloadURL.substring(0, 50) + '...'));
     console.log('=== UPLOAD BUSINESS IMAGES FUNCTION END ===');
     
@@ -522,7 +526,222 @@ export const uploadBusinessImages = async (images, businessId) => {
       }
     }
     
-    throw new Error(`Batch upload failed: ${batchError.message}`);
+    throw new Error(`Business image batch upload failed: ${batchError.message}`);
+  }
+};
+
+// ============================================
+// PRODUCT IMAGE UPLOAD FUNCTION (NEW)
+// ============================================
+export const uploadProductImages = async (images, businessId, productId) => {
+  console.log('=== UPLOAD PRODUCT IMAGES FUNCTION START ===');
+  console.log('Input images:', images?.length || 0);
+  console.log('Business ID:', businessId);
+  console.log('Product ID:', productId);
+  
+  // Validation checks
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    console.log('No images provided, returning empty array');
+    return [];
+  }
+  
+  if (!businessId || typeof businessId !== 'string') {
+    throw new Error('Invalid businessId provided for product upload');
+  }
+  
+  if (!productId || typeof productId !== 'string') {
+    throw new Error('Invalid productId provided for product upload');
+  }
+  
+  if (!storage) {
+    throw new Error('Firebase Storage is not initialized');
+  }
+  
+  const uploadPromises = [];
+  
+  console.log(`Starting parallel upload of ${images.length} product images to product-images/...`);
+  
+  // Create upload promises for all images
+  for (let i = 0; i < images.length; i++) {
+    const image = images[i];
+    
+    const uploadPromise = (async (imageIndex) => {
+      try {
+        console.log(`Processing product image ${imageIndex + 1}/${images.length}`);
+        
+        // Handle both File objects and image objects with file property
+        let fileToUpload;
+        let fileName;
+        
+        if (image instanceof File) {
+          fileToUpload = image;
+          fileName = image.name;
+        } else if (image && image.file instanceof File) {
+          fileToUpload = image.file;
+          fileName = image.file.name || image.name || 'product-image.jpg';
+        } else {
+          throw new Error(`Invalid image object at index ${imageIndex}`);
+        }
+        
+        // Validate file
+        if (!fileToUpload || !(fileToUpload instanceof File)) {
+          throw new Error(`Image ${imageIndex + 1} is not a valid File object`);
+        }
+        
+        // Generate unique filename with proper sanitization
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substr(2, 9);
+        const fileExtension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+        const baseName = fileName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_');
+        const generatedFileName = `${businessId}_${productId}_${timestamp}_${randomId}_${baseName}.${fileExtension}`;
+        
+        // Create storage path for PRODUCT IMAGES
+        const storagePath = `product-images/${generatedFileName}`;
+        const imageRef = ref(storage, storagePath);
+        
+        console.log(`Uploading product image to path: ${storagePath}`);
+        
+        // Upload metadata
+        const metadata = {
+          contentType: fileToUpload.type || 'image/jpeg',
+          customMetadata: {
+            businessId: businessId,
+            productId: productId,
+            originalName: fileName,
+            uploadTime: new Date().toISOString(),
+            imageId: image.id || `product_img_${imageIndex}`,
+            imageType: 'product'
+          }
+        };
+        
+        // Upload file to Firebase Storage
+        console.log(`Starting upload for product image ${generatedFileName}...`);
+        const uploadResult = await uploadBytes(imageRef, fileToUpload, metadata);
+        console.log(`Product image upload completed for ${generatedFileName}`);
+        
+        // Get download URL
+        console.log(`Getting download URL for product image ${generatedFileName}...`);
+        const downloadURL = await getDownloadURL(imageRef);
+        console.log(`Product image download URL obtained: ${downloadURL.substring(0, 50)}...`);
+        
+        // Validate download URL
+        if (!downloadURL || typeof downloadURL !== 'string' || !downloadURL.startsWith('https://')) {
+          throw new Error(`Invalid download URL for product image ${generatedFileName}`);
+        }
+        
+        // Create image data object
+        const imageData = {
+          id: image.id || `product_img_${imageIndex}_${timestamp}`,
+          fileName: generatedFileName,
+          storagePath: storagePath,
+          downloadURL: downloadURL,
+          originalName: fileName,
+          size: fileToUpload.size,
+          contentType: fileToUpload.type || 'image/jpeg',
+          uploadTime: new Date().toISOString(),
+          businessId: businessId,
+          productId: productId,
+          storageRef: imageRef,
+          uploadIndex: imageIndex
+        };
+        
+        console.log(`✅ Product image ${imageIndex + 1} processed successfully`);
+        return imageData;
+        
+      } catch (uploadError) {
+        console.error(`❌ Error uploading product image ${imageIndex + 1}:`, uploadError);
+        
+        // Provide specific error messages
+        let errorMessage = 'Unknown upload error';
+        
+        if (uploadError.code) {
+          switch (uploadError.code) {
+            case 'storage/unauthorized':
+              errorMessage = 'Permission denied. Check Firebase Storage security rules.';
+              break;
+            case 'storage/canceled':
+              errorMessage = 'Upload was canceled.';
+              break;
+            case 'storage/quota-exceeded':
+              errorMessage = 'Storage quota exceeded.';
+              break;
+            case 'storage/invalid-format':
+              errorMessage = 'Invalid file format.';
+              break;
+            case 'storage/retry-limit-exceeded':
+              errorMessage = 'Upload failed after multiple retries.';
+              break;
+            case 'storage/invalid-checksum':
+              errorMessage = 'File integrity check failed.';
+              break;
+            default:
+              errorMessage = `Storage error: ${uploadError.code}`;
+          }
+        } else {
+          errorMessage = uploadError.message || 'Upload failed';
+        }
+        
+        throw new Error(`Failed to upload product image: ${errorMessage}`);
+      }
+    })(i);
+    
+    uploadPromises.push(uploadPromise);
+  }
+  
+  try {
+    // Wait for all uploads to complete
+    console.log('Waiting for all product image uploads to complete...');
+    const results = await Promise.all(uploadPromises);
+    
+    // Filter out any failed uploads and sort by upload index
+    const successfulUploads = results
+      .filter(result => result && result.downloadURL)
+      .sort((a, b) => (a.uploadIndex || 0) - (b.uploadIndex || 0));
+    
+    console.log(`✅ Product image upload batch completed: ${successfulUploads.length}/${images.length} successful`);
+    
+    if (successfulUploads.length === 0) {
+      throw new Error('No product images were uploaded successfully');
+    }
+    
+    if (successfulUploads.length < images.length) {
+      console.warn(`⚠️ Warning: Only ${successfulUploads.length} out of ${images.length} product images were uploaded successfully`);
+    }
+    
+    // Log final results
+    console.log('=== PRODUCT IMAGE UPLOAD RESULTS ===');
+    console.log('Total images processed:', images.length);
+    console.log('Successful uploads:', successfulUploads.length);
+    console.log('Storage folder: product-images/');
+    console.log('Product ID:', productId);
+    console.log('Download URLs:', successfulUploads.map(img => img.downloadURL.substring(0, 50) + '...'));
+    console.log('=== UPLOAD PRODUCT IMAGES FUNCTION END ===');
+    
+    return successfulUploads;
+    
+  } catch (batchError) {
+    console.error('=== PRODUCT IMAGE BATCH UPLOAD ERROR ===');
+    console.error('Error details:', batchError);
+    
+    // Clean up any partial uploads if possible
+    console.log('Attempting to clean up partial product image uploads...');
+    for (const promise of uploadPromises) {
+      try {
+        const result = await promise.catch(() => null);
+        if (result && result.storageRef) {
+          try {
+            await deleteObject(result.storageRef);
+            console.log(`Cleaned up product image: ${result.fileName}`);
+          } catch (cleanupError) {
+            console.warn(`Could not clean up product image: ${result.fileName}`, cleanupError);
+          }
+        }
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+    }
+    
+    throw new Error(`Product image batch upload failed: ${batchError.message}`);
   }
 };
 

@@ -43,7 +43,7 @@ const Home = () => {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             min-height: 100vh;
             width: 100vw;
-            background: linear-gradient(135deg, ${themeColors.primary} 0%, ${themeColors.secondary} 50%, ${themeColors.tertiary} 100%);
+            background-color: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -54,25 +54,7 @@ const Home = () => {
             overflow-y: auto;
           }
           
-          .home-main::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-              radial-gradient(circle at 20% 80%, rgba(187, 225, 250, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(50, 130, 184, 0.1) 0%, transparent 50%);
-            pointer-events: none;
-          }
-          
           .main-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(187, 225, 250, 0.3);
-            box-shadow: 0 25px 50px rgba(27, 38, 44, 0.2);
-            border-radius: 32px;
             padding: 4rem;
             width: 100%;
             max-width: 1400px;
@@ -86,15 +68,6 @@ const Home = () => {
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-          }
-          
-          .floating-animation {
-            animation: float 6s ease-in-out infinite;
-          }
-          
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
           }
           
           .buttons-grid {
@@ -310,7 +283,7 @@ const Home = () => {
       </style>
       
       <main className="home-main">
-        <div className="main-container floating-animation">
+        <div className="main-container">
           {/* Hero Section */}
           <div style={{ marginBottom: '3rem' }}>
             <h1 className="home-title title-gradient" style={{
@@ -320,7 +293,7 @@ const Home = () => {
               letterSpacing: '-0.025em',
               lineHeight: '1.1'
             }}>
-              Business Directory Portal
+              ShopNex Directory User Portal
             </h1>
             
             <div style={{
