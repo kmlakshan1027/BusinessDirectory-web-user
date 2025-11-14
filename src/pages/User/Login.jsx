@@ -192,7 +192,7 @@ const Login = () => {
             }} 
           />
           <h1 className="login-title">Welcome</h1>
-          <p className="login-subtitle">Please sign in to your account</p>
+          <p className="login-subtitle">Please sign in to your account using your registered E-mail</p>
           
           {error && <div className="error-message">{error}</div>}
           
